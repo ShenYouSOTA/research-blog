@@ -145,7 +145,7 @@ export async function applyShikiToRstHtml(html: string): Promise<string> {
         type: 'element' as const,
         tagName: 'label',
         properties: {
-          htmlFor: `cg-${groupId}-${i}`,
+          htmlFor: [`cg-${groupId}-${i}`],
           className: ['cg-tab'],
           role: 'tab',
           ...(icon ? { 'data-cg-icon': icon } : {}),
