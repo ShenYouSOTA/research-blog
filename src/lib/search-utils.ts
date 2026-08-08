@@ -35,6 +35,17 @@ export function parseRecentSearches(raw: string | null, max: number): string[] {
   }
 }
 
+/**
+ * Resolve an Alt+digit tab hotkey against the currently visible type tabs.
+ * Every visible tab advertises an ⌥N hint, so every advertised N must resolve
+ * — bounds come from the visible list, never a hardcoded digit set (the tab
+ * count varies with enabled features and per-query result counts).
+ */
+export function resolveTypeHotkey(key: string, visibleTypes: ContentType[]): ContentType | undefined {
+  if (!/^[1-9]$/.test(key)) return undefined;
+  return visibleTypes[parseInt(key, 10) - 1];
+}
+
 /** Strip markdown/MDX syntax to plain text for full-content indexing. */
 export function stripMarkdown(text: string): string {
   return text

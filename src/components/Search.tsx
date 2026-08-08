@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from 
 import { isFeatureEnabled } from '@/lib/features';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageProvider';
-import { type ContentType, parseRecentSearches } from '@/lib/search-utils';
+import { type ContentType, parseRecentSearches, resolveTypeHotkey } from '@/lib/search-utils';
 import type { TranslationKey } from '@/i18n/translations';
 import { siteConfig } from '../../site.config';
 import { resolveLocaleValue } from '@/lib/i18n';
@@ -176,10 +176,10 @@ export default function Search() {
   }
 
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    // Number keys 1–4 switch type tabs when results are visible
-    if (allResults.length > 0 && e.altKey && ['1', '2', '3', '4'].includes(e.key)) {
+    // Alt+digit switches type tabs when results are visible.
+    if (allResults.length > 0 && e.altKey) {
       const visibleTypes = CONTENT_TYPES.filter((ct) => ct === 'All' || typeCounts[ct] > 0);
-      const target = visibleTypes[parseInt(e.key, 10) - 1];
+      const target = resolveTypeHotkey(e.key, visibleTypes);
       if (target) { e.preventDefault(); setActiveType(target); setActiveIndex(-1); return; }
     }
     if (displayedResults.length === 0) return;

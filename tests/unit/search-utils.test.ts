@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { parseRecentSearches, getResultType } from '@/lib/search-utils';
+import { parseRecentSearches, getResultType, resolveTypeHotkey, type ContentType } from '@/lib/search-utils';
 
 describe('parseRecentSearches', () => {
   test('returns valid string arrays unchanged (capped)', () => {
@@ -33,5 +33,29 @@ describe('getResultType', () => {
     expect(getResultType('/notes/zettelkasten/')).toBe('Note');
     expect(getResultType('/posts/hello/')).toBe('Post');
     expect(getResultType('/anything-else/')).toBe('Post');
+  });
+});
+
+describe('resolveTypeHotkey', () => {
+  const allFive: ContentType[] = ['All', 'Post', 'Flow', 'Book', 'Note'];
+
+  test('every visible tab is reachable, including the fifth', () => {
+    // Regression: the handler hardcoded Alt+1..4, so the fifth tab ("Note")
+    // advertised an ⌥5 hint that never worked.
+    allFive.forEach((type, i) => {
+      expect(resolveTypeHotkey(String(i + 1), allFive)).toBe(type);
+    });
+  });
+
+  test('digits past the visible list resolve to nothing', () => {
+    expect(resolveTypeHotkey('6', allFive)).toBeUndefined();
+    expect(resolveTypeHotkey('3', ['All', 'Post'])).toBeUndefined();
+  });
+
+  test('non-digit keys resolve to nothing', () => {
+    expect(resolveTypeHotkey('0', allFive)).toBeUndefined();
+    expect(resolveTypeHotkey('a', allFive)).toBeUndefined();
+    expect(resolveTypeHotkey('Enter', allFive)).toBeUndefined();
+    expect(resolveTypeHotkey('10', allFive)).toBeUndefined();
   });
 });
