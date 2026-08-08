@@ -264,6 +264,33 @@ describe("Integration: Feed Utils", () => {
     expect(item!.content).not.toMatch(/^\.\. /m);
   });
 
+  rstFeedTest("rST feed HTML is sanitized with the RstRenderer allowlist", () => {
+    const url = withTrailingSlash(siteConfig.baseUrl.replace(/\/+$/, "") + getPostUrl(rstPostWithHtml!));
+    const item = getFeedItems("posts", true).find((i) => i.url === url);
+    expect(item).toBeDefined();
+    // The docutils pass emits <pre data-amytis-code> markers; the shared
+    // sanitizer strips that attribute (it is not on the pre allowlist), so
+    // its absence is direct evidence the sanitizer ran on the feed path.
+    expect(item!.content).not.toContain("data-amytis-code");
+    expect(item!.content).not.toContain("<script");
+  });
+
+  // Inverse environment gate of the tests above: only runs where the Python
+  // docutils renderer did NOT produce renderedHtml (e.g. no python on PATH).
+  const rstPostWithoutHtml = getAllPosts().find((p) => p.sourceFormat === "rst" && !p.renderedHtml);
+  const rstFallbackTest = rstPostWithoutHtml ? test : test.skip;
+
+  rstFallbackTest("rST posts without rendered HTML fall back to the excerpt", () => {
+    const url = withTrailingSlash(siteConfig.baseUrl.replace(/\/+$/, "") + getPostUrl(rstPostWithoutHtml!));
+    const item = getFeedItems("posts", true).find((i) => i.url === url);
+    expect(item).toBeDefined();
+    // Never the mis-parsed rST source…
+    expect(item!.content).not.toMatch(/^\.\. /m);
+    expect(item!.content).not.toContain("::");
+    // …just the plain-text excerpt as a paragraph.
+    expect(item!.content).toContain("<p>");
+  });
+
   test("feed items with authors have a non-empty authors array", () => {
     const items = getFeedItems();
     items.forEach((item) => {

@@ -5,6 +5,7 @@ import { siteConfig } from '../../site.config';
 import { getPostUrl, getFlowUrl, withTrailingSlash } from './urls';
 import { resolveLocale } from './i18n';
 import { markdownToHtml } from './markdown-to-html';
+import { sanitizeRenderedRstHtml } from './rst-sanitize';
 
 export interface FeedItem {
   title: string;
@@ -36,25 +37,37 @@ function absolutizeHtmlUrls(html: string, pageUrl: string): string {
 /** The fields the feed needs from a post or flow to render full content. */
 interface FeedContentSource {
   content: string;
+  excerpt: string;
   renderedHtml?: string;
   sourceFormat?: 'markdown' | 'rst';
   latex?: boolean;
 }
 
+const escapeHtmlText = (v: string) =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /**
  * Item HTML for content:encoded / Atom <content>. rST posts carry their real
- * HTML in renderedHtml — running the rST source through a Markdown parser
- * mangles directives into literal text — and Markdown posts go through the
- * shared full-syntax pipeline (alerts, containers, wikilinks, math).
+ * HTML in renderedHtml, sanitized with the same allowlist the on-page
+ * RstRenderer applies; when the docutils renderer didn't run (renderedHtml
+ * unset) fall back to the plain-text excerpt — running rST source through a
+ * Markdown parser mangles directives into literal text. Markdown posts go
+ * through the shared full-syntax pipeline (alerts, containers, wikilinks,
+ * math).
  */
 function itemContentHtml(
   post: FeedContentSource,
   pageUrl: string,
   slugRegistry: Map<string, SlugRegistryEntry>,
 ): string {
-  const html = post.sourceFormat === 'rst' && post.renderedHtml
-    ? post.renderedHtml
-    : markdownToHtml(post.content, { slugRegistry, math: post.latex });
+  let html: string;
+  if (post.sourceFormat === 'rst') {
+    html = post.renderedHtml
+      ? sanitizeRenderedRstHtml(post.renderedHtml)
+      : `<p>${escapeHtmlText(post.excerpt)}</p>`;
+  } else {
+    html = markdownToHtml(post.content, { slugRegistry, math: post.latex });
+  }
   return absolutizeHtmlUrls(html, pageUrl);
 }
 
