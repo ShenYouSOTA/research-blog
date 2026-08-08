@@ -44,6 +44,26 @@ describe("text metrics", () => {
       expect(result).toBe("See the docs for details");
       expect(result).not.toContain("https://");
     });
+
+    test("should keep wikilink display text or slug", () => {
+      const text = "See [[my-note|the note]] and [[another-note]] for context";
+      expect(generateExcerpt(text)).toBe("See the note and another-note for context");
+    });
+
+    test("should drop ::: container marker lines", () => {
+      const text = ":::tip Some title\nThe advice itself\n:::";
+      expect(generateExcerpt(text)).toBe("The advice itself");
+    });
+
+    test("should drop GitHub alert markers but keep the alert body", () => {
+      const text = "> [!NOTE]\n> Something worth knowing";
+      expect(generateExcerpt(text)).toBe("Something worth knowing");
+    });
+
+    test("should strip raw HTML and custom-element tags", () => {
+      const text = 'Before <rss-feed url="https://example.com/feed" /> and <em>after</em> text';
+      expect(generateExcerpt(text)).toBe("Before and after text");
+    });
   });
 
   describe("calculateReadingMinutes", () => {
