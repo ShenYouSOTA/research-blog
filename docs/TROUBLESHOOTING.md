@@ -20,15 +20,15 @@ The messages come from **browser extensions** (e.g. uBlock Origin, Privacy Badge
 
 **To verify:** Open `http://localhost:3000` in a Chrome Incognito window with extensions disabled — both messages will be gone.
 
-## AVIF source images cause 404s in production
+## AVIF/WebP source images bypass the optimizer (served as-is)
 
 **Related upstream issue:** [Niels-IO/next-image-export-optimizer#263](https://github.com/Niels-IO/next-image-export-optimizer/issues/263)
 
-`next-image-export-optimizer` has a bug with AVIF source files when `storePicturesInWEBP=true`. The optimizer writes `.WEBP` output to disk but `ExportedImage` generates `srcset` paths with the original `.AVIF` extension — pointing to files that do not exist, causing 404 errors in production.
+`next-image-export-optimizer` has a bug with AVIF source files when `storePicturesInWEBP=true`: it writes `.WEBP` output to disk but `ExportedImage` generates `srcset` paths with the original `.AVIF` extension — pointing at files that do not exist, so production 404s.
 
-**Workaround:** Do not use `.avif` as a source format for cover images or any image referenced via `ExportedImage`. Use `.jpg`, `.png`, or `.webp` instead — the optimizer converts these to WebP correctly.
+Amytis works around this in `shouldBypassImageOptimization()` (`src/lib/image-utils.ts`): `.avif` and `.webp` sources render with `unoptimized`, so `ExportedImage` emits the raw `src` and no broken `srcset`. AVIF covers therefore **render correctly** — they are just served as-is. WebP is bypassed too because user-supplied WebP files are usually already compressed; re-encoding them buys little.
 
-AVIF is a great format in general, but this project's static-export image pipeline (`next-image-export-optimizer`) does not handle AVIF source files correctly until the upstream bug is fixed.
+**Trade-off:** bypassed formats get no responsive size variants. Use `.jpg` / `.png` when you want the optimizer to generate the responsive WebP set; use `.avif` / `.webp` when a single pre-optimized file is fine.
 
 ## `bun run build` fails on Windows with a `validator.ts` "Cannot find module" type error
 
