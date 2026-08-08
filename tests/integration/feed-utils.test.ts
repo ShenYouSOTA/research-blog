@@ -137,15 +137,106 @@ describe("Integration: Feed Utils", () => {
   });
 
   test("feed item content is rendered HTML, not raw Markdown", () => {
-    const items = getFeedItems();
-    items.forEach((item) => {
-      if (item.content.trim().length === 0) return;
-      // Rendered HTML must contain at least one HTML tag
-      expect(item.content).toMatch(/<[a-z][^>]*>/i);
-      // Markdown headings should not appear outside code blocks
-      const strippedCodeBlocks = item.content.replace(/<pre[\s\S]*?<\/pre>/gi, '');
-      expect(strippedCodeBlocks).not.toMatch(/^#{1,6}\s/m);
-    });
+    const originalMaxItems = siteConfig.feed.maxItems;
+    try {
+      siteConfig.feed.maxItems = 0;
+      // Must request full content explicitly — without it every item.content
+      // is '' and the assertions below pass vacuously.
+      const items = getFeedItems("all", true);
+      expect(items.length).toBeGreaterThan(0);
+      items.forEach((item) => {
+        expect(item.content.trim().length).toBeGreaterThan(0);
+        // Rendered HTML must contain at least one HTML tag
+        expect(item.content).toMatch(/<[a-z][^>]*>/i);
+        // Markdown headings should not appear outside code blocks
+        const strippedCodeBlocks = item.content.replace(/<pre[\s\S]*?<\/pre>/gi, '');
+        expect(strippedCodeBlocks).not.toMatch(/^#{1,6}\s/m);
+      });
+    } finally {
+      siteConfig.feed.maxItems = originalMaxItems;
+    }
+  });
+
+  // The showcase fixtures document extended syntax inside code examples, so
+  // fenced blocks and inline code are stripped before asserting on prose.
+  // `<code(?![-\w])` avoids eating a stray unmapped `<code-group>` tag, which
+  // must instead fail the synthetic-tag assertion below.
+  const stripCodeIslands = (html: string) =>
+    html
+      .replace(/<pre[\s\S]*?<\/pre>/gi, '')
+      .replace(/<code(?![-\w])(?:\s[^>]*)?>[\s\S]*?<\/code>/gi, '');
+
+  test("extended syntax renders in full content instead of leaking as literal text", () => {
+    const originalMaxItems = siteConfig.feed.maxItems;
+    try {
+      siteConfig.feed.maxItems = 0;
+      const items = getFeedItems("all", true);
+      items.forEach((item) => {
+        const prose = stripCodeIslands(item.content);
+        // ::: container openers/closers must be consumed by remark-directive.
+        // Substring, not line-anchored: a leaked opener renders mid-line as
+        // <p>:::code-group</p>.
+        expect(prose).not.toContain(':::');
+        // GitHub alert markers must be transformed, not shown
+        expect(prose).not.toMatch(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/);
+        // Wikilinks must resolve to anchors (or broken-link spans)
+        expect(prose).not.toContain('[[');
+        // Synthetic React-only tags must be mapped to plain HTML
+        expect(item.content).not.toContain('<github-alert');
+        expect(item.content).not.toContain('<code-group');
+      });
+    } finally {
+      siteConfig.feed.maxItems = originalMaxItems;
+    }
+  });
+
+  test("alerts and code groups render as plain semantic HTML in full content", () => {
+    const originalMaxItems = siteConfig.feed.maxItems;
+    try {
+      siteConfig.feed.maxItems = 0;
+      const items = getFeedItems("posts", true);
+      const showcase = items.find((i) => i.url.includes("code-block-features-showcase"));
+      expect(showcase).toBeDefined();
+      // > [!NOTE] alerts become titled blockquotes
+      expect(showcase!.content).toContain("<blockquote");
+      // :::code-group panels survive as <pre> blocks
+      expect(showcase!.content).toContain("<pre");
+    } finally {
+      siteConfig.feed.maxItems = originalMaxItems;
+    }
+  });
+
+  test("wikilinks resolve to anchors in full-content flow items", () => {
+    const flows = getAllFlows();
+    if (!flows.some((f) => /\[\[[^\]]+\]\]/.test(f.content))) return; // skip without fixtures
+
+    const originalMaxItems = siteConfig.feed.maxItems;
+    try {
+      siteConfig.feed.maxItems = 0;
+      const items = getFeedItems("flows", true);
+      const withWikilink = items.filter((i) => i.content.includes('class="wikilink'));
+      expect(withWikilink.length).toBeGreaterThan(0);
+    } finally {
+      siteConfig.feed.maxItems = originalMaxItems;
+    }
+  });
+
+  test("math posts carry MathML in full content", () => {
+    const mathPost = getAllPosts().find((p) => p.latex && p.sourceFormat !== "rst");
+    if (!mathPost) return; // skip without fixtures
+
+    const originalMaxItems = siteConfig.feed.maxItems;
+    try {
+      siteConfig.feed.maxItems = 0;
+      const url = withTrailingSlash(siteConfig.baseUrl.replace(/\/+$/, "") + getPostUrl(mathPost));
+      const item = getFeedItems("posts", true).find((i) => i.url === url);
+      expect(item).toBeDefined();
+      expect(item!.content).toContain("<math");
+      // TeX sources must not leak as $-delimited literals outside code
+      expect(stripCodeIslands(item!.content)).not.toMatch(/\$\$/);
+    } finally {
+      siteConfig.feed.maxItems = originalMaxItems;
+    }
   });
 
   test("full-content items carry no relative src/href (feed readers resolve nothing)", () => {

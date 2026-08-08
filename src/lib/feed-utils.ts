@@ -1,14 +1,10 @@
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm';
-import remarkRehype from 'remark-rehype';
-import rehypeRaw from 'rehype-raw';
-import rehypeStringify from 'rehype-stringify';
 import { getAllPosts } from './content/posts';
 import { getAllFlows } from './content/flows';
+import { buildSlugRegistry, type SlugRegistryEntry } from './content/discovery';
 import { siteConfig } from '../../site.config';
 import { getPostUrl, getFlowUrl, withTrailingSlash } from './urls';
 import { resolveLocale } from './i18n';
+import { markdownToHtml } from './markdown-to-html';
 
 export interface FeedItem {
   title: string;
@@ -19,17 +15,6 @@ export interface FeedItem {
   content: string;
   tags: string[];
   authors?: string[];
-}
-
-function markdownToHtml(markdown: string): string {
-  const result = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(rehypeRaw)
-    .use(rehypeStringify)
-    .processSync(markdown);
-  return String(result);
 }
 
 /**
@@ -48,19 +33,28 @@ function absolutizeHtmlUrls(html: string, pageUrl: string): string {
   });
 }
 
+/** The fields the feed needs from a post or flow to render full content. */
+interface FeedContentSource {
+  content: string;
+  renderedHtml?: string;
+  sourceFormat?: 'markdown' | 'rst';
+  latex?: boolean;
+}
+
 /**
  * Item HTML for content:encoded / Atom <content>. rST posts carry their real
  * HTML in renderedHtml — running the rST source through a Markdown parser
  * mangles directives into literal text — and Markdown posts go through the
- * plain GFM pipeline.
+ * shared full-syntax pipeline (alerts, containers, wikilinks, math).
  */
 function itemContentHtml(
-  post: { content: string; renderedHtml?: string; sourceFormat?: 'markdown' | 'rst' },
+  post: FeedContentSource,
   pageUrl: string,
+  slugRegistry: Map<string, SlugRegistryEntry>,
 ): string {
   const html = post.sourceFormat === 'rst' && post.renderedHtml
     ? post.renderedHtml
-    : markdownToHtml(post.content);
+    : markdownToHtml(post.content, { slugRegistry, math: post.latex });
   return absolutizeHtmlUrls(html, pageUrl);
 }
 
@@ -77,48 +71,70 @@ export function getFeedItems(feedType: FeedType = 'main', includeFullContent: bo
   const { maxItems, includeFlows } = siteConfig.feed;
   const baseUrl = siteConfig.baseUrl.replace(/\/+$/, '');
 
-  let items: FeedItem[] = [];
+  // Full-content HTML rendering is the expensive part, so sort and apply the
+  // maxItems cut on lightweight entries first and only render the survivors.
+  interface FeedEntry {
+    item: FeedItem;
+    source: FeedContentSource;
+  }
 
-  const getPostItems = () => getAllPosts().map((post) => {
+  const getPostEntries = (): FeedEntry[] => getAllPosts().map((post) => {
     const url = withTrailingSlash(`${baseUrl}${getPostUrl(post)}`);
     return {
-      title: post.title,
-      url,
-      date: new Date(post.date),
-      excerpt: post.excerpt,
-      content: includeFullContent ? itemContentHtml(post, url) : '',
-      tags: post.tags || [],
-      authors: post.authors,
+      item: {
+        title: post.title,
+        url,
+        date: new Date(post.date),
+        excerpt: post.excerpt,
+        content: '',
+        tags: post.tags || [],
+        authors: post.authors,
+      },
+      source: post,
     };
   });
 
-  const getFlowItems = () => getAllFlows().map((flow) => {
+  const getFlowEntries = (): FeedEntry[] => getAllFlows().map((flow) => {
     const url = withTrailingSlash(`${baseUrl}${getFlowUrl(flow.slug)}`);
     return {
-      title: flow.title,
-      url,
-      date: new Date(flow.date),
-      excerpt: flow.excerpt,
-      content: includeFullContent ? itemContentHtml(flow, url) : '',
-      tags: flow.tags || [],
+      item: {
+        title: flow.title,
+        url,
+        date: new Date(flow.date),
+        excerpt: flow.excerpt,
+        content: '',
+        tags: flow.tags || [],
+      },
+      source: flow,
     };
   });
 
+  let entries: FeedEntry[];
   if (feedType === 'posts') {
-    items = getPostItems();
+    entries = getPostEntries();
   } else if (feedType === 'flows') {
-    items = getFlowItems();
+    entries = getFlowEntries();
   } else if (feedType === 'all') {
-    items = [...getPostItems(), ...getFlowItems()];
+    entries = [...getPostEntries(), ...getFlowEntries()];
   } else {
     // main
-    items = includeFlows ? [...getPostItems(), ...getFlowItems()] : getPostItems();
+    entries = includeFlows ? [...getPostEntries(), ...getFlowEntries()] : getPostEntries();
   }
 
   // Sort descending by date
-  items.sort((a, b) => b.date.getTime() - a.date.getTime());
+  entries.sort((a, b) => b.item.date.getTime() - a.item.date.getTime());
 
-  return maxItems > 0 ? items.slice(0, maxItems) : items;
+  const kept = maxItems > 0 ? entries.slice(0, maxItems) : entries;
+
+  if (!includeFullContent) {
+    return kept.map(({ item }) => item);
+  }
+
+  const slugRegistry = buildSlugRegistry();
+  return kept.map(({ item, source }) => ({
+    ...item,
+    content: itemContentHtml(source, item.url, slugRegistry),
+  }));
 }
 
 const escapeXml = (v: string) =>
