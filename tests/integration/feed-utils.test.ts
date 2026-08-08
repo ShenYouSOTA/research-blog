@@ -171,6 +171,7 @@ describe("Integration: Feed Utils", () => {
     try {
       siteConfig.feed.maxItems = 0;
       const items = getFeedItems("all", true);
+      expect(items.length).toBeGreaterThan(0);
       items.forEach((item) => {
         const prose = stripCodeIslands(item.content);
         // ::: container openers/closers must be consumed by remark-directive.

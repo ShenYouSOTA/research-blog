@@ -102,12 +102,14 @@ export function generateExcerpt(content: string): string {
   // Wikilinks: keep the display text ([[slug|display]]) or the slug ([[slug]]).
   plain = plain.replace(/\[\[([^\]|]+?)\|([^\]]+?)\]\]/g, '$2');
   plain = plain.replace(/\[\[([^\]]+?)\]\]/g, '$1');
+  // Unwrap inline code BEFORE stripping tags: `<br>` must not become a
+  // dangling backtick pair once the tag inside it is deleted.
+  plain = plain.replace(/`([^`]+)`/g, '$1');
   // Raw HTML/JSX tags (custom elements like <rss-feed …/> included).
   plain = plain.replace(/<\/?[a-zA-Z][^>]*>/g, '');
   plain = plain.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
   plain = plain.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   plain = plain.replace(/(\*\*|__|\*|_)/g, '');
-  plain = plain.replace(/`([^`]+)`/g, '$1');
   plain = plain.replace(/^>\s+/gm, '');
   // GitHub alert markers survive the blockquote strip above ("> [!NOTE]").
   plain = plain.replace(/\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*/gi, '');

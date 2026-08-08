@@ -64,6 +64,10 @@ describe("text metrics", () => {
       const text = 'Before <rss-feed url="https://example.com/feed" /> and <em>after</em> text';
       expect(generateExcerpt(text)).toBe("Before and after text");
     });
+
+    test("should not leave dangling backticks when inline code wraps a tag", () => {
+      expect(generateExcerpt("Use `<br>` here")).toBe("Use here");
+    });
   });
 
   describe("calculateReadingMinutes", () => {

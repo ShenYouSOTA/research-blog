@@ -13,9 +13,11 @@ const allowedTags = [
   // transformTags below restricts `input` to type="radio" only.
   'input',
   'label',
+  // MathML (KaTeX output). Deliberately NOT annotation-xml: with a free-form
+  // encoding attribute it is a known mXSS surface, and nothing we render
+  // emits it (KaTeX uses <annotation encoding="application/x-tex">).
   'math',
   'annotation',
-  'annotation-xml',
   'maction',
   'menclose',
   'merror',
@@ -66,7 +68,6 @@ const allowedAttributes: sanitizeHtml.IOptions['allowedAttributes'] = {
   li: ['value'],
   math: ['display', 'xmlns'],
   annotation: ['encoding'],
-  'annotation-xml': ['encoding'],
   pre: ['class', 'style', ...codeBlockAttrs],
   code: ['class', 'style', ...codeBlockAttrs],
   span: ['class', 'style', ...codeBlockAttrs],
