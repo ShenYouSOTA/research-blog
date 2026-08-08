@@ -163,15 +163,22 @@ export function resolveSeriesAuthors(slug: string, posts: PostData[]): string[] 
 
 const collectionPostsMemo = createKeyedMemo<string, PostData[]>();
 
+/**
+ * Series-qualified identity for collection membership. Bare slugs are
+ * ambiguous — duplicate post slugs across series are legal (autoPaths gives
+ * them distinct URLs) — so both the collection-item resolver and
+ * `getCollectionsForPost` must match on this key, never on `post.slug` alone.
+ */
+function getCollectionKey(post: Pick<PostData, 'slug' | 'series'>): string {
+  return post.series ? `${post.series}/${post.slug}` : `posts/${post.slug}`;
+}
+
 export function getCollectionPosts(collectionSlug: string): PostData[] {
   return collectionPostsMemo.get(collectionSlug, () => {
     const data = getSeriesData(collectionSlug);
     if (data?.type !== 'collection' || !data.items) {
       return [];
     }
-
-    const getCollectionKey = (post: PostData) =>
-      post.series ? `${post.series}/${post.slug}` : `posts/${post.slug}`;
 
     const allPosts = getAllPosts();
     const postIndex = new Map(allPosts.map((post) => [getCollectionKey(post), post]));
@@ -220,8 +227,9 @@ export function toPostNavItems(posts: PostData[]): PostNavItem[] {
 
 const collectionsForPostMemo = createKeyedMemo<string, CollectionContext[]>();
 
-export function getCollectionsForPost(postSlug: string): CollectionContext[] {
-  return collectionsForPostMemo.get(postSlug, () => {
+export function getCollectionsForPost(post: Pick<PostData, 'slug' | 'series'>): CollectionContext[] {
+  const postKey = getCollectionKey(post);
+  return collectionsForPostMemo.get(postKey, () => {
     if (!fs.existsSync(seriesDirectory)) return [];
     const seriesFolders = fs.readdirSync(seriesDirectory, { withFileTypes: true });
     const results: CollectionContext[] = [];
@@ -232,7 +240,7 @@ export function getCollectionsForPost(postSlug: string): CollectionContext[] {
       if (data?.type !== 'collection') continue;
       if (process.env.NODE_ENV === 'production' && data.draft) continue;
       const posts = getCollectionPosts(folder.name);
-      if (posts.some(p => p.slug === postSlug)) {
+      if (posts.some(p => getCollectionKey(p) === postKey)) {
         results.push({ slug: folder.name, title: data.title, posts: toPostNavItems(posts) });
       }
     }

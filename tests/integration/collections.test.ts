@@ -88,24 +88,35 @@ describe("Integration: Collections", () => {
   // ── getCollectionsForPost ───────────────────────────────────────
 
   test("getCollectionsForPost finds collection for standalone post", () => {
-    const collections = getCollectionsForPost("asynchronous-javascript");
+    const collections = getCollectionsForPost({ slug: "asynchronous-javascript" });
     const slugs = collections.map((c) => c.slug);
     expect(slugs).toContain("modern-web-dev");
   });
 
   test("getCollectionsForPost finds collection for series post", () => {
-    const collections = getCollectionsForPost("01-getting-started");
+    const collections = getCollectionsForPost({ slug: "01-getting-started", series: "nextjs-deep-dive" });
     const slugs = collections.map((c) => c.slug);
     expect(slugs).toContain("modern-web-dev");
   });
 
   test("getCollectionsForPost returns empty array for post not in any collection", () => {
-    const collections = getCollectionsForPost("welcome-to-amytis");
+    const collections = getCollectionsForPost({ slug: "welcome-to-amytis" });
     expect(collections).toEqual([]);
   });
 
+  test("getCollectionsForPost matches on series-qualified identity, not bare slug", () => {
+    // 中文测试文章 is in modern-web-dev via markdown-showcase. Duplicate slugs
+    // across series are legal, so a namesake from any other series — or a
+    // standalone post with the same slug — must NOT inherit the membership.
+    const member = getCollectionsForPost({ slug: "中文测试文章", series: "markdown-showcase" });
+    expect(member.map((c) => c.slug)).toContain("modern-web-dev");
+
+    expect(getCollectionsForPost({ slug: "中文测试文章", series: "some-other-series" })).toEqual([]);
+    expect(getCollectionsForPost({ slug: "中文测试文章" })).toEqual([]);
+  });
+
   test("getCollectionsForPost collection entry includes slug, title, and posts", () => {
-    const collections = getCollectionsForPost("asynchronous-javascript");
+    const collections = getCollectionsForPost({ slug: "asynchronous-javascript" });
     const col = collections.find((c) => c.slug === "modern-web-dev")!;
     expect(col).toBeDefined();
     expect(typeof col.title).toBe("string");

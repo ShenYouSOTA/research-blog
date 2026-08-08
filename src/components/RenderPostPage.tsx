@@ -39,7 +39,7 @@ export default function RenderPostPage({ post }: { post: PostData }) {
   const { prev, next } = getAdjacentPosts(post);
   const slugRegistry = buildSlugRegistry();
   const backlinks = getBacklinks(post.slug);
-  const collectionContexts = getCollectionsForPost(post.slug);
+  const collectionContexts = getCollectionsForPost(post);
   let seriesPosts: PostNavItem[] = [];
   let seriesTitle: string | undefined;
 
