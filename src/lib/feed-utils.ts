@@ -62,9 +62,12 @@ function itemContentHtml(
 ): string {
   let html: string;
   if (post.sourceFormat === 'rst') {
-    html = post.renderedHtml
-      ? sanitizeRenderedRstHtml(post.renderedHtml)
-      : `<p>${escapeHtmlText(post.excerpt)}</p>`;
+    if (!post.renderedHtml) {
+      // Plain-text fallback: nothing to absolutize, and skipping that pass
+      // guarantees excerpt text resembling src="…"/href="…" is never rewritten.
+      return `<p>${escapeHtmlText(post.excerpt)}</p>`;
+    }
+    html = sanitizeRenderedRstHtml(post.renderedHtml);
   } else {
     html = markdownToHtml(post.content, { slugRegistry, math: post.latex });
   }

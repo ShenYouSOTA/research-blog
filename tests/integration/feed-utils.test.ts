@@ -285,9 +285,10 @@ describe("Integration: Feed Utils", () => {
     const url = withTrailingSlash(siteConfig.baseUrl.replace(/\/+$/, "") + getPostUrl(rstPostWithoutHtml!));
     const item = getFeedItems("posts", true).find((i) => i.url === url);
     expect(item).toBeDefined();
-    // Never the mis-parsed rST source…
+    // Never the mis-parsed rST source: directive lines and literal-block
+    // introducers. (Not a bare "::" check — prose like std::vector is legal.)
     expect(item!.content).not.toMatch(/^\.\. /m);
-    expect(item!.content).not.toContain("::");
+    expect(item!.content).not.toMatch(/::\s*$/m);
     // …just the plain-text excerpt as a paragraph.
     expect(item!.content).toContain("<p>");
   });
