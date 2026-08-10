@@ -96,11 +96,23 @@ export function calculateWordCountFromText(text: string): number {
 export function generateExcerpt(content: string): string {
   let plain = content.replace(/^#+\s+/gm, '');
   plain = plain.replace(FENCED_CODE_BLOCK_RE, '');
+  // ::: container opener/closer lines (VuePress/directive syntax) are pure
+  // markup; after fence removal any remaining ones are prose-level.
+  plain = plain.replace(/^:{3,}[^\n]*$/gm, '');
+  // Wikilinks: keep the display text ([[slug|display]]) or the slug ([[slug]]).
+  plain = plain.replace(/\[\[([^\]|]+?)\|([^\]]+?)\]\]/g, '$2');
+  plain = plain.replace(/\[\[([^\]]+?)\]\]/g, '$1');
+  // Unwrap inline code BEFORE stripping tags: `<br>` must not become a
+  // dangling backtick pair once the tag inside it is deleted.
+  plain = plain.replace(/`([^`]+)`/g, '$1');
+  // Raw HTML/JSX tags (custom elements like <rss-feed …/> included).
+  plain = plain.replace(/<\/?[a-zA-Z][^>]*>/g, '');
   plain = plain.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
   plain = plain.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   plain = plain.replace(/(\*\*|__|\*|_)/g, '');
-  plain = plain.replace(/`([^`]+)`/g, '$1');
   plain = plain.replace(/^>\s+/gm, '');
+  // GitHub alert markers survive the blockquote strip above ("> [!NOTE]").
+  plain = plain.replace(/\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*/gi, '');
   plain = plain.replace(/\s+/g, ' ').trim();
 
   if (plain.length <= 160) {

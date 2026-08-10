@@ -160,6 +160,14 @@ types → io/cache → series-metadata → parse → posts → series → {relat
 - `discovery.ts` — cross-content aggregates: `getAllTags`, `buildSlugRegistry` (wikilink targets), `getBacklinks`.
 - Text metrics: `src/lib/text-metrics.ts` owns reading-time, word-count, excerpt, and heading extraction for **all** formats. The Markdown pipeline, the JS rST fallback (`rst.ts`), and the Python rST renderer (`rst-renderer.ts`, via the `…FromText` plain-text variants) share its tokenizer and pacing constants, so the metrics can never disagree across pipelines.
 
+## Feeds
+
+All eight feed routes are thin wrappers over `src/lib/feed-utils.ts` (`generateRssFeed` / `generateAtomFeed` / `getFeedItems`). With `feed.content: 'full'`:
+
+- Markdown/MDX items render through `src/lib/markdown-to-html.ts` — the same author-facing syntax set as `MarkdownRenderer` (GFM, GitHub alerts, VuePress containers, code groups, wikilinks, math) as a plain HTML string. Feed-specific choices: synthetic `<github-alert>`/`<code-group>` elements are rewritten to titled blockquotes / labeled `<pre>` blocks, KaTeX emits MathML-only output (readers never load the KaTeX stylesheet), and Shiki / `rehype-slug` / `rehype-image-metadata` are deliberately skipped (page-only concerns). Mermaid fences likewise stay plain `<pre><code class="language-mermaid">` blocks — feed readers run no JS. If `MarkdownRenderer` gains a syntax plugin, add it here too — `tests/integration/feed-utils.test.ts` asserts the known syntaxes don't leak as literal text.
+- rST items embed their docutils `renderedHtml`, sanitized by the same shared allowlist the on-page renderer uses (`src/lib/rst-sanitize.ts`); when docutils didn't run, the item falls back to the plain-text excerpt rather than mis-parsing rST source as Markdown.
+- Sorting and the `maxItems` cut happen before content rendering, so only surviving items pay the render cost. All relative URLs are absolutized against the item's page URL.
+
 ## Code Block Highlighting
 
 - Highlighter: **Shiki** (build-time, dual `github-light` / `github-dark` theme via CSS variables). See `docs/CODE-BLOCKS.md` for author-facing fence/directive metadata.
