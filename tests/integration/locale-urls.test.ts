@@ -3,6 +3,7 @@ import {
   delocalizePath,
   localeFromPathname,
   localizePath,
+  nextSwitchableLocale,
   nonDefaultLocales,
   resolveSwitchTarget,
   splitLocalePath,
@@ -183,5 +184,28 @@ describe('locale-code collision throws (strict build)', () => {
       posts: { ...siteConfig.posts, basePath: 'zh' },
     };
     expect(() => validateSiteConfig(disabled)).not.toThrow();
+  });
+});
+
+describe('nextSwitchableLocale (safe cycling)', () => {
+  const manifest = { zh: ['/about/'] };
+
+  test('two locales cycle between each other when the non-default has content', () => {
+    expect(nextSwitchableLocale('en', manifest, EN_DEFAULT)).toBe('zh');
+    expect(nextSwitchableLocale('zh', manifest, EN_DEFAULT)).toBe('en');
+  });
+
+  test('empty non-default locales are skipped, never navigated into', () => {
+    const threeLocales = { locales: ['en', 'zh', 'fr'], defaultLocale: 'en' };
+    // fr has no manifest entries → cycling from zh skips fr and lands on en.
+    expect(nextSwitchableLocale('zh', manifest, threeLocales)).toBe('en');
+    // From en, zh (has content) wins over fr (empty).
+    expect(nextSwitchableLocale('en', manifest, threeLocales)).toBe('zh');
+    // From en with NO locale content anywhere → nothing to switch to.
+    expect(nextSwitchableLocale('en', {}, threeLocales)).toBeNull();
+  });
+
+  test('the default locale is always reachable', () => {
+    expect(nextSwitchableLocale('zh', {}, EN_DEFAULT)).toBe('en');
   });
 });

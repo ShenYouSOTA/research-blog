@@ -62,6 +62,28 @@ export function localeFromPathname(pathname: string | null | undefined, config: 
 }
 
 /**
+ * The next locale the language switch may cycle to. The default locale is
+ * always reachable (its tree always exists); a non-default locale is only
+ * switchable when it has manifest entries — cycling into an empty locale
+ * would navigate to a home page that was never generated. Returns null when
+ * no OTHER locale is switchable (the switch should render nothing).
+ */
+export function nextSwitchableLocale(
+  current: string,
+  twinnedPaths: Record<string, string[]>,
+  config: LocalePathConfig,
+): string | null {
+  const { locales, defaultLocale } = config;
+  const start = locales.indexOf(current);
+  for (let step = 1; step <= locales.length; step++) {
+    const candidate = locales[(start + step + locales.length) % locales.length];
+    if (candidate === undefined || candidate === current) continue;
+    if (candidate === defaultLocale || (twinnedPaths[candidate]?.length ?? 0) > 0) return candidate;
+  }
+  return null;
+}
+
+/**
  * Where the language switch should navigate: the current page's twin in the
  * target locale when one exists, otherwise the target locale's home.
  * `twinnedPaths` maps each non-default locale to the unprefixed trailing-slash

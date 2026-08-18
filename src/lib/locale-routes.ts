@@ -334,6 +334,12 @@ export function localeDeepParams(): { slug: string; postSlug: string; rest: stri
 
 // ─── LanguageSwitch manifest ─────────────────────────────────────────────────
 
+/** Pagination pages (2..N) that exist in BOTH trees: min of the two page counts. Exported for tests. */
+export function sharedPageNumbers(defaultCount: number, localeCount: number, pageSize: number): number[] {
+  const pages = Math.min(Math.ceil(defaultCount / pageSize), Math.ceil(localeCount / pageSize));
+  return Array.from({ length: Math.max(0, pages - 1) }, (_, i) => i + 2);
+}
+
 const manifestMemo = createKeyedMemo<string, string[]>();
 
 /**
@@ -349,10 +355,22 @@ function twinnedPathsFor(locale: string): string[] {
     const add = (unprefixedUrl: string) => paths.add(withTrailingSlash(unprefixedUrl));
 
     if (hasLocaleContent(locale, 'any')) add('/');
-    if (hasLocaleContent(locale, 'posts')) add(`/${getPostsBasePath()}`);
+    if (hasLocaleContent(locale, 'posts')) {
+      add(`/${getPostsBasePath()}`);
+      // Paginated listing twins: switching from /posts/page/2 lands on
+      // /zh/posts/page/2 only when both trees actually have a page 2.
+      for (const page of sharedPageNumbers(getListingPosts().length, getListingPosts(locale).length, POST_PAGE_SIZE)) {
+        add(`/${getPostsBasePath()}/page/${page}`);
+      }
+    }
     if (hasLocaleContent(locale, 'series')) add(getSeriesListUrl());
     if (hasLocaleContent(locale, 'books')) add(getBooksListUrl());
-    if (hasLocaleContent(locale, 'notes')) add('/notes');
+    if (hasLocaleContent(locale, 'notes')) {
+      add('/notes');
+      for (const page of sharedPageNumbers(getAllNotes().length, getAllNotes(locale).length, NOTES_PAGE_SIZE)) {
+        add(`/notes/page/${page}`);
+      }
+    }
 
     for (const post of getAllPosts(locale)) {
       const twin = getTwinPost(post, DEFAULT_LOCALE);
@@ -366,11 +384,22 @@ function twinnedPathsFor(locale: string): string[] {
         if (getTwinNote(note, DEFAULT_LOCALE)) add(getNoteUrl(note.slug));
       }
     }
-    for (const [seriesSlug] of Object.entries(getAllSeries(locale))) {
+    for (const [seriesSlug, localePosts] of Object.entries(getAllSeries(locale))) {
       if (getSeriesData(seriesSlug, DEFAULT_LOCALE)) {
-        if (kindEnabled('series')) add(getSeriesUrl(seriesSlug));
+        const sharedPages = sharedPageNumbers(
+          getAllSeries(DEFAULT_LOCALE)[seriesSlug]?.length ?? 0,
+          localePosts.length,
+          SERIES_PAGE_SIZE,
+        );
+        if (kindEnabled('series')) {
+          add(getSeriesUrl(seriesSlug));
+          for (const page of sharedPages) add(`${getSeriesUrl(seriesSlug)}/page/${page}`);
+        }
         const prefix = seriesListingPrefixes(locale).find(p => p.seriesSlug === seriesSlug)?.prefix;
-        if (prefix) add(`/${prefix}`);
+        if (prefix) {
+          add(`/${prefix}`);
+          for (const page of sharedPages) add(`/${prefix}/page/${page}`);
+        }
       }
     }
     if (kindEnabled('books')) {

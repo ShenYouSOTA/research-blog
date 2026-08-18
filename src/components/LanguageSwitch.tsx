@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from './LanguageProvider';
 import { Language } from '@/i18n/translations';
 import { siteConfig } from '../../site.config';
-import { resolveSwitchTarget } from '@/lib/locale-urls';
+import { nextSwitchableLocale, resolveSwitchTarget } from '@/lib/locale-urls';
 
 const LOCALE_LABELS: Record<string, string> = {
   en: 'EN',
@@ -47,8 +47,10 @@ export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps
     router.push(resolveSwitchTarget(pathname, language, target, twinnedPaths, config));
   };
 
-  const currentIndex = locales.indexOf(language);
-  const nextLocale = locales[(currentIndex + 1) % locales.length] as Language;
+  // Cycle only through switchable locales — an empty locale's home was never
+  // generated, so blindly advancing to the next configured code could 404.
+  const nextLocale = nextSwitchableLocale(language, twinnedPaths, config) as Language | null;
+  if (!nextLocale) return null;
 
   // ── Text variant: quiet typographic links for the footer ──────────────────
   if (variant === 'text') {
