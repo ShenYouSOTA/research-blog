@@ -3,10 +3,9 @@ import { isFeatureEnabled } from '@/lib/features';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../../site.config';
-import BookLayout from '@/layouts/BookLayout';
+import BookChapterBody from '@/components/page-bodies/BookChapterBody';
 import { resolveLocaleValue } from '@/lib/i18n';
-import { buildBookChapterJsonLd, serializeJsonLd } from '@/lib/json-ld';
-import { getBookUrl, getBookChapterUrl } from '@/lib/urls';
+import { getBookChapterUrl } from '@/lib/urls';
 import { safeDecodeParam } from '@/lib/route-params';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
@@ -97,28 +96,5 @@ export default async function BookChapterPage({ params }: { params: ChapterPageP
   const { slug: rawSlug, chapter: rawChapter } = await params;
   const slug = safeDecodeParam(rawSlug);
   const chapterSlug = chapterIdFromParams(rawChapter);
-
-  const book = getBookData(slug);
-  const chapter = getBookChapter(slug, chapterSlug);
-
-  if (!book || !chapter) {
-    notFound();
-  }
-
-  const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
-  const jsonLd = buildBookChapterJsonLd({
-    chapter,
-    book,
-    chapterUrl: `${siteUrl}${getBookChapterUrl(slug, chapterSlug)}`,
-    bookUrl: `${siteUrl}${getBookUrl(slug)}`,
-    siteTitle: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
-    siteUrl,
-  });
-
-  return (
-    <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <BookLayout book={book} chapter={chapter} />
-    </>
-  );
+  return <BookChapterBody locale={DEFAULT_LOCALE} bookSlug={slug} chapterId={chapterSlug} />;
 }

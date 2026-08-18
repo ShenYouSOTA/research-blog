@@ -1,16 +1,12 @@
 import { getAllBooks } from '@/lib/content/books';
-import { getBookUrl } from '@/lib/urls';
 import { isFeatureEnabled } from '@/lib/features';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import ContentCard from '@/components/ContentCard';
-import { getTranslator } from '@/lib/i18n';
+import BooksIndexBody from '@/components/page-bodies/BooksIndexBody';
 import { siteConfig } from '../../../site.config';
 import { createListingMetadata } from '@/lib/metadata';
-import PageHeader from '@/components/PageHeader';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
-const { t } = getTranslator(DEFAULT_LOCALE);
 
 export async function generateMetadata(): Promise<Metadata> {
   const books = getAllBooks();
@@ -25,33 +21,5 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function BooksPage() {
   if (!isFeatureEnabled('books')) notFound();
-  const books = getAllBooks();
-
-  return (
-    <div className="layout-main">
-      <PageHeader
-        titleKey="books"
-        subtitleKey="books_subtitle"
-        subtitleOneKey="books_subtitle_one"
-        count={books.length}
-        subtitleParams={{ count: books.length }}
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {books.map(book => (
-          <ContentCard
-            key={book.slug}
-            href={getBookUrl(book.slug)}
-            title={book.title}
-            slug={book.slug}
-            locale={DEFAULT_LOCALE}
-            coverImage={book.coverImage}
-            badge={`${book.chapters.length} ${t('chapters_count')}`}
-            authors={book.authors}
-            excerpt={book.excerpt}
-          />
-        ))}
-      </div>
-    </div>
-  );
+  return <BooksIndexBody locale={DEFAULT_LOCALE} />;
 }

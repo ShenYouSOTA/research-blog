@@ -1,12 +1,11 @@
-import { getAllNotes, getNoteTags } from '@/lib/content/notes';
+import { getAllNotes } from '@/lib/content/notes';
 import { isFeatureEnabled } from '@/lib/features';
-import { paginate, paginationStaticParams } from '@/lib/pagination';
+import { paginationStaticParams } from '@/lib/pagination';
 import { siteConfig } from '../../../../../site.config';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createListingMetadata } from '@/lib/metadata';
-import PageHeader from '@/components/PageHeader';
-import NoteContent from '@/components/NoteContent';
+import NotesIndexBody from '@/components/page-bodies/NotesIndexBody';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
@@ -30,25 +29,6 @@ export default async function NotesPaginatedPage({ params }: { params: Promise<{
   if (!isFeatureEnabled('flow')) notFound();
   const { page: pageStr } = await params;
   const page = parseInt(pageStr, 10);
-  const slice = paginate(getAllNotes(), page, PAGE_SIZE);
-  if (!slice || page < 2) notFound();
-  const { items: notes, totalPages } = slice;
-
-  const tags = getNoteTags();
-
-  return (
-    <div className="layout-main">
-      <PageHeader
-        titleKey="notes"
-        subtitleKey="page_of_total"
-        subtitleParams={{ page, total: totalPages }}
-        className="mb-12"
-      />
-      <NoteContent
-        notes={notes}
-        tags={tags}
-        pagination={{ currentPage: page, totalPages, basePath: '/notes' }}
-      />
-    </div>
-  );
+  if (isNaN(page) || page < 2) notFound();
+  return <NotesIndexBody locale={DEFAULT_LOCALE} page={page} />;
 }
