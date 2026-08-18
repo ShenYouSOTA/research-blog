@@ -12,6 +12,7 @@ import {
   getSeriesListUrl,
   getReservedRouteSegments,
   getRouteLocales,
+  localizeUrl,
 } from './urls';
 import { safeDecodeParam, resolveFromParam, withDevEncodedVariants } from './route-params';
 
@@ -30,6 +31,7 @@ import { safeDecodeParam, resolveFromParam, withDevEncodedVariants } from './rou
 
 const POST_PAGE_SIZE = siteConfig.pagination.posts;
 const SERIES_PAGE_SIZE = siteConfig.pagination.series;
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
 // ─── series redirectFrom lookup (absorbed from series-redirects.ts) ──────────
 
@@ -349,12 +351,14 @@ export function seriesPageParams(): { slug: string; page: string }[] {
 
 // ─── request-time resolution ─────────────────────────────────────────────────
 
-/** Map a `[slug]` / `[slug]/page/[page]` prefix to the series it lists, if any. */
-export function resolveSeriesListingPrefix(prefix: string): string | undefined {
+/** Map a `[slug]` / `[slug]/page/[page]` prefix to the series it lists, if any.
+ *  The prefix rules (customPaths, autoPaths) are global config; the series
+ *  lookup runs against the given locale tree. */
+export function resolveSeriesListingPrefix(prefix: string, locale: string = DEFAULT_LOCALE): string | undefined {
   const customPaths = getSeriesCustomPaths();
   return (
     Object.entries(customPaths).find(([, path]) => path === prefix)?.[0] ??
-    (getSeriesAutoPaths() && !Object.hasOwn(customPaths, prefix) && getSeriesData(prefix) ? prefix : undefined)
+    (getSeriesAutoPaths() && !Object.hasOwn(customPaths, prefix) && getSeriesData(prefix, locale) ? prefix : undefined)
   );
 }
 
@@ -415,29 +419,39 @@ export type PrefixedPostResolution =
  * would send one series' child to the other. Only non-series surfaces
  * (basePath, legacy redirects) fall back to the global bare-slug lookup.
  */
-export function resolvePrefixedPost(rawPrefix: string, rawPostSlug: string): PrefixedPostResolution {
+export function resolvePrefixedPost(rawPrefix: string, rawPostSlug: string, locale: string = DEFAULT_LOCALE): PrefixedPostResolution {
   const decodedPrefix = safeDecodeParam(rawPrefix);
-  const currentPath = `/${decodedPrefix}/${safeDecodeParam(rawPostSlug)}`;
+  // The request path in canonical form: locale trees serve the same grammar
+  // under their prefix, and getPostUrl on a locale-tree post is prefixed too,
+  // so the canonical-vs-redirect comparison below stays an identity check.
+  const currentPath = localizeUrl(`/${decodedPrefix}/${safeDecodeParam(rawPostSlug)}`, locale);
 
   const basePath = getPostsBasePath();
   const customPaths = getSeriesCustomPaths();
-  const isValidBasePath = decodedPrefix === basePath && basePath !== 'posts';
+  // Unprefixed /posts/<slug> is served by the static posts/[slug] route, but
+  // no such static twin exists under a locale prefix — /zh/posts/<slug> must
+  // resolve here even when basePath is 'posts'.
+  const isValidBasePath = decodedPrefix === basePath && (basePath !== 'posts' || locale !== DEFAULT_LOCALE);
   const matchedSeriesSlug = Object.entries(customPaths).find(([, path]) => path === decodedPrefix)?.[0];
-  const isAutoSeriesPath = getSeriesAutoPaths() && !Object.hasOwn(customPaths, decodedPrefix) && getSeriesData(decodedPrefix) !== null;
+  const isAutoSeriesPath = getSeriesAutoPaths() && !Object.hasOwn(customPaths, decodedPrefix) && getSeriesData(decodedPrefix, locale) !== null;
 
   // A custom-path prefix maps to its series slug; an auto-path prefix IS the
   // series slug. Scope the lookup to that series so same-slug children of a
   // different series can't win the match.
   const owningSeries = matchedSeriesSlug ?? (isAutoSeriesPath ? decodedPrefix : undefined);
   const seriesScopedPost = owningSeries
-    ? resolveFromParam(rawPostSlug, slug => getSeriesPosts(owningSeries).find(p => p.slug === slug) ?? null)
+    ? resolveFromParam(rawPostSlug, slug => getSeriesPosts(owningSeries, locale).find(p => p.slug === slug) ?? null)
     : null;
 
+  // The legacy redirectFrom fallback stays a default-tree surface: no alias
+  // pages are generated at locale-prefixed paths (migration aliases live at
+  // their old unprefixed URLs).
   const post =
     seriesScopedPost ??
-    resolveFromParam(rawPostSlug, getPostBySlug) ??
-    getAllPosts().find(candidate => candidate.redirectFrom?.includes(currentPath)) ??
-    null;
+    resolveFromParam(rawPostSlug, slug => getPostBySlug(slug, locale)) ??
+    (locale === DEFAULT_LOCALE
+      ? getAllPosts().find(candidate => candidate.redirectFrom?.includes(currentPath)) ?? null
+      : null);
   if (!post) return null;
 
   const isLegacyRedirect = post.redirectFrom?.includes(currentPath) ?? false;
