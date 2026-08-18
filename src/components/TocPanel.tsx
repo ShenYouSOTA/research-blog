@@ -20,13 +20,9 @@ export default function TocPanel({ headings, className = '' }: TocPanelProps) {
   if (headings.length === 0) return null;
 
   return (
-    // suppressHydrationWarning on locale-bound nodes is a band-aid for the
-    // known static-export + client-i18n drift: SSR renders defaultLocale,
-    // `useLanguage()` hook serves the user's saved locale on hydration. The
-    // real fix is per-locale URL routing, tracked as a separate refactor.
-    <nav aria-label={t('on_this_page')} className={className} suppressHydrationWarning>
+    <nav aria-label={t('on_this_page')} className={className}>
       <div className="flex items-center justify-between mb-3">
-        <MetaLabel suppressHydrationWarning>
+        <MetaLabel>
           {t('on_this_page')}
         </MetaLabel>
         <button
@@ -35,7 +31,6 @@ export default function TocPanel({ headings, className = '' }: TocPanelProps) {
           className="text-muted hover:text-foreground transition-colors"
           aria-expanded={!collapsed}
           aria-label={collapsed ? t('toc_expand') : t('toc_collapse')}
-          suppressHydrationWarning
         >
           <svg
             className={`w-3.5 h-3.5 transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`}

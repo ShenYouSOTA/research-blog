@@ -12,7 +12,7 @@ import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import AuthorStats from '@/components/AuthorStats';
-import TranslatedText from '@/components/TranslatedText';
+import { T } from '@/components/T';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 const { t } = getTranslator(DEFAULT_LOCALE);
@@ -150,7 +150,7 @@ export default async function AuthorPage({
       {/* Books */}
       {authorBooks.length > 0 && (
         <section className="mb-16">
-          <h2 className="text-2xl font-serif font-bold text-heading mb-8"><TranslatedText translationKey="books" /></h2>
+          <h2 className="text-2xl font-serif font-bold text-heading mb-8"><T k="books" /></h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {authorBooks.map(book => (
               <ContentCard
@@ -172,7 +172,7 @@ export default async function AuthorPage({
       {/* Series contributions */}
       {authorSeries.length > 0 && (
         <section className="mb-16">
-          <h2 className="text-2xl font-serif font-bold text-heading mb-8"><TranslatedText translationKey="series" /></h2>
+          <h2 className="text-2xl font-serif font-bold text-heading mb-8"><T k="series" /></h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {authorSeries.map(({ slug, data, postCount }) => (
               <ContentCard
@@ -193,7 +193,7 @@ export default async function AuthorPage({
 
       <section>
         {authorSeries.length > 0 && (
-          <h2 className="text-2xl font-serif font-bold text-heading mb-8"><TranslatedText translationKey="posts" /></h2>
+          <h2 className="text-2xl font-serif font-bold text-heading mb-8"><T k="posts" /></h2>
         )}
         <PostList posts={posts} locale={DEFAULT_LOCALE} />
       </section>

@@ -13,12 +13,18 @@ import { LanguageProvider } from '@/components/LanguageProvider';
  */
 export async function renderAsync(
   element: ReactElement | Promise<ReactElement>,
+  options?: { locale?: string },
 ): Promise<string> {
   // Mirror production wiring: the root layout always mounts LanguageProvider,
   // so components may call useLanguage() anywhere in the tree. The provider
-  // renders children directly — it adds no markup to the output.
+  // renders children directly — it adds no markup to the output. Outside a
+  // Next router usePathname() is null, so the locale falls back to the site
+  // default unless a test passes one explicitly.
   const stream = await renderToReadableStream(
-    createElement(LanguageProvider, null, element),
+    createElement(LanguageProvider, {
+      locale: options?.locale as Parameters<typeof LanguageProvider>[0]['locale'],
+      children: element,
+    }),
   );
   await stream.allReady;
   const reader = stream.getReader();

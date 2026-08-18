@@ -4,6 +4,7 @@ import {
   localeFromPathname,
   localizePath,
   nonDefaultLocales,
+  resolveSwitchTarget,
   splitLocalePath,
   type LocalePathConfig,
 } from '../../src/lib/locale-urls';
@@ -85,6 +86,39 @@ describe('locale-urls pure helpers', () => {
     expect(localeFromPathname(null, EN_DEFAULT)).toBe('en');
     expect(localeFromPathname(undefined, ZH_DEFAULT)).toBe('zh');
     expect(localeFromPathname('/zh/about/', EN_DEFAULT)).toBe('zh');
+  });
+});
+
+describe('resolveSwitchTarget (LanguageSwitch navigation core)', () => {
+  const manifest = { zh: ['/about/', '/posts/foo/', '/posts/', '/'] };
+
+  test('en page with a zh twin → the zh twin', () => {
+    expect(resolveSwitchTarget('/about/', 'en', 'zh', manifest, EN_DEFAULT)).toBe('/zh/about/');
+    expect(resolveSwitchTarget('/posts/foo', 'en', 'zh', manifest, EN_DEFAULT)).toBe('/zh/posts/foo/');
+  });
+
+  test('en page without a zh twin → the zh home', () => {
+    expect(resolveSwitchTarget('/posts/untranslated/', 'en', 'zh', manifest, EN_DEFAULT)).toBe('/zh/');
+  });
+
+  test('zh twin page back to en → the unprefixed page', () => {
+    expect(resolveSwitchTarget('/zh/about/', 'zh', 'en', manifest, EN_DEFAULT)).toBe('/about/');
+  });
+
+  test('zh-original page (no en twin) back to en → the en home', () => {
+    expect(resolveSwitchTarget('/zh/posts/zh-original-demo/', 'zh', 'en', manifest, EN_DEFAULT)).toBe('/');
+  });
+
+  test('null pathname and empty manifest degrade to homes', () => {
+    expect(resolveSwitchTarget(null, 'en', 'zh', {}, EN_DEFAULT)).toBe('/zh/');
+    expect(resolveSwitchTarget(null, 'zh', 'en', {}, EN_DEFAULT)).toBe('/');
+  });
+
+  test('defaultLocale-agnostic: zh-default site switching to en', () => {
+    const zhManifest = { en: ['/about/'] };
+    expect(resolveSwitchTarget('/about/', 'zh', 'en', zhManifest, ZH_DEFAULT)).toBe('/en/about/');
+    expect(resolveSwitchTarget('/en/about/', 'en', 'zh', zhManifest, ZH_DEFAULT)).toBe('/about/');
+    expect(resolveSwitchTarget('/en/original/', 'en', 'zh', zhManifest, ZH_DEFAULT)).toBe('/');
   });
 });
 

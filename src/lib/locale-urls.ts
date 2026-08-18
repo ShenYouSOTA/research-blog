@@ -60,3 +60,28 @@ export function localeFromPathname(pathname: string | null | undefined, config: 
   if (!pathname) return config.defaultLocale;
   return splitLocalePath(pathname, config).locale;
 }
+
+/**
+ * Where the language switch should navigate: the current page's twin in the
+ * target locale when one exists, otherwise the target locale's home.
+ * `twinnedPaths` maps each non-default locale to the unprefixed trailing-slash
+ * paths that exist in it (content twins plus that locale's chrome pages).
+ * Twin-ness is symmetric, so switching back to the default locale checks the
+ * CURRENT locale's manifest.
+ */
+export function resolveSwitchTarget(
+  pathname: string | null | undefined,
+  currentLocale: string,
+  targetLocale: string,
+  twinnedPaths: Record<string, string[]>,
+  config: LocalePathConfig,
+): string {
+  const unprefixed = delocalizePath(pathname || '/', config);
+  const current = unprefixed.endsWith('/') ? unprefixed : `${unprefixed}/`;
+  if (targetLocale === config.defaultLocale) {
+    const exists = (twinnedPaths[currentLocale] ?? []).includes(current);
+    return exists ? current : '/';
+  }
+  const exists = (twinnedPaths[targetLocale] ?? []).includes(current);
+  return localizePath(exists ? current : '/', targetLocale, config);
+}

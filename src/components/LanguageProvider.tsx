@@ -1,98 +1,94 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { siteConfig } from '../../site.config';
 import { translations, Language, TranslationKey } from '../i18n/translations';
 import { buildFeatureOverrides } from '@/lib/i18n';
+import { localeFromPathname } from '@/lib/locale-urls';
+
+/**
+ * Unprefixed, trailing-slash page paths that exist in each non-default
+ * locale (content twins plus the locale's chrome pages), computed on the
+ * server and passed down through the root layout. LanguageSwitch uses it to
+ * decide between "navigate to the twin" and "fall back to the locale home".
+ */
+export type TwinnedPathManifest = Record<string, string[]>;
 
 interface LanguageContextType {
   language: Language;
-  isHydrated: boolean;
-  setLanguage: (lang: Language) => void;
   t: (key: TranslationKey) => string;
   tWith: (key: TranslationKey, params: Record<string, string | number>) => string;
+  twinnedPaths: TwinnedPathManifest;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 const isI18nEnabled = siteConfig.i18n.enabled !== false && siteConfig.i18n.locales.length >= 2;
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Always initialize with site default to match server-side rendering
-  const [language, setLanguageState] = useState<Language>(siteConfig.i18n.defaultLocale as Language);
-  // When i18n is disabled there is nothing to hydrate — mark as ready immediately
-  const [isHydrated, setIsHydrated] = useState(!isI18nEnabled);
+const LOCALE_CONFIG = {
+  locales: isI18nEnabled ? siteConfig.i18n.locales : [],
+  defaultLocale: siteConfig.i18n.defaultLocale,
+};
 
+/**
+ * Language context, derived from the URL. The locale prefix in the pathname
+ * (/zh/…) is authoritative, so the server and every client render agree from
+ * the first paint — no localStorage, no hydration gate, no post-hydration
+ * language swap. An explicit `locale` prop wins over pathname derivation
+ * (used by tests and available to locale-aware layouts).
+ */
+export function LanguageProvider({
+  locale,
+  twinnedPaths,
+  children,
+}: {
+  locale?: Language;
+  twinnedPaths?: TwinnedPathManifest;
+  children: React.ReactNode;
+}) {
+  // Returns null outside a Next router (unit-test renders) — the helper
+  // falls back to the default locale there.
+  const pathname = usePathname();
+  const language = (locale ?? localeFromPathname(pathname, LOCALE_CONFIG)) as Language;
+  const table = translations[language] ?? translations[LOCALE_CONFIG.defaultLocale as Language] ?? translations.en;
+
+  // Keep <html lang> honest in dev and across client-side navigations; the
+  // exported HTML gets its attribute rewritten per locale at build time.
   useEffect(() => {
-    if (!isI18nEnabled) return;
-    // Only access localStorage after mount (client-side). Reads can throw in
-    // Safari private mode / when storage is disabled — a failure must fall back
-    // to the default locale, never propagate and blank the tree.
-    let savedLang: Language | null = null;
-    try {
-      savedLang = localStorage.getItem('amytis-language') as Language | null;
-    } catch {
-      savedLang = null;
-    }
+    document.documentElement.lang = language;
+  }, [language]);
 
-    // Use requestAnimationFrame to avoid cascading render lint error
-    const rafId = requestAnimationFrame(() => {
-      if (savedLang && translations[savedLang]) {
-        setLanguageState(savedLang);
-      }
-      setIsHydrated(true);
-    });
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
-  const setLanguage = (lang: Language) => {
-    if (!isI18nEnabled) return;
-    setLanguageState(lang);
-    try {
-      localStorage.setItem('amytis-language', lang);
-    } catch {
-      // Preference won't persist across reloads, but the in-memory switch works.
-    }
-  };
-
-  const activeLang = (isHydrated ? language : siteConfig.i18n.defaultLocale) as Language;
-
-  // Keep <html lang> in sync with the active language for screen readers and
-  // translation UAs. The layout renders defaultLocale at SSR and carries
-  // suppressHydrationWarning, so updating it on the client is safe.
-  useEffect(() => {
-    document.documentElement.lang = activeLang;
-  }, [activeLang]);
-
-  // Recompute only when the active language changes; siteConfig is static
-  const featureOverrides = useMemo(
-    () => buildFeatureOverrides(activeLang),
-    [activeLang],
-  );
+  // Recompute only when the language changes; siteConfig is static
+  const featureOverrides = useMemo(() => buildFeatureOverrides(language), [language]);
 
   /**
-   * Translates a key.
-   * Returns the default locale translation if not hydrated to prevent hydration mismatch.
-   * Feature name overrides from siteConfig.features.*.name take precedence.
+   * Translates a key. Feature name overrides from siteConfig.features.*.name
+   * take precedence.
    */
-  const t = (key: TranslationKey) => {
+  const t = useCallback((key: TranslationKey) => {
     if (key in featureOverrides) return featureOverrides[key]!;
-    return translations[activeLang][key] || key;
-  };
+    return table[key] || key;
+  }, [featureOverrides, table]);
 
   /**
    * Translates a key with parameters.
    */
-  const tWith = (key: TranslationKey, params: Record<string, string | number>) => {
-    let result = (key in featureOverrides ? featureOverrides[key]! : translations[activeLang][key]) || key;
+  const tWith = useCallback((key: TranslationKey, params: Record<string, string | number>) => {
+    let result = t(key);
     for (const [name, value] of Object.entries(params)) {
       result = result.replace(new RegExp(`\\{${name}\\}`, 'g'), String(value));
     }
     return result;
-  };
+  }, [t]);
+
+  const value = useMemo(
+    () => ({ language, t, tWith, twinnedPaths: twinnedPaths ?? {} }),
+    [language, t, tWith, twinnedPaths],
+  );
 
   return (
-    <LanguageContext.Provider value={{ language, isHydrated, setLanguage, t, tWith }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
