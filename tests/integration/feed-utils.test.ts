@@ -1,9 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import { getFeedItems } from "../../src/lib/feed-utils";
-import { getAllPosts } from '../../src/lib/content/posts';
+import { getAllPosts, getTwinPost } from '../../src/lib/content/posts';
 import { getAllFlows } from '../../src/lib/content/flows';
 import { getPostUrl, getFlowUrl, withTrailingSlash } from "../../src/lib/urls";
 import { siteConfig } from "../../site.config";
+
+
+// The post set feeds serve: the default tree plus locale-tree originals
+// (posts with no default-tree twin) — mirrors getFeedPosts in feed-utils.
+function feedPostsUnion() {
+  return [
+    ...getAllPosts(),
+    ...['zh'].flatMap((locale) => getAllPosts(locale).filter((p) => !getTwinPost(p, 'en'))),
+  ];
+}
 
 describe("Integration: Feed Utils", () => {
   test("getFeedItems returns an array", () => {
@@ -66,7 +76,7 @@ describe("Integration: Feed Utils", () => {
       siteConfig.feed.maxItems = 0;
       siteConfig.feed.includeFlows = false;
       const items = getFeedItems();
-      const allPosts = getAllPosts();
+      const allPosts = feedPostsUnion();
       expect(items.length).toBe(allPosts.length);
     } finally {
       siteConfig.feed.maxItems = originalMaxItems;
@@ -282,8 +292,11 @@ describe("Integration: Feed Utils", () => {
   const rstFallbackTest = rstPostWithoutHtml ? test : test.skip;
 
   rstFallbackTest("rST posts without rendered HTML fall back to the excerpt", () => {
+    const originalMaxItems = siteConfig.feed.maxItems;
+    siteConfig.feed.maxItems = 0; // the old rST fixture would fall out of a truncated window
     const url = withTrailingSlash(siteConfig.baseUrl.replace(/\/+$/, "") + getPostUrl(rstPostWithoutHtml!));
     const item = getFeedItems("posts", true).find((i) => i.url === url);
+    siteConfig.feed.maxItems = originalMaxItems;
     expect(item).toBeDefined();
     // Never the mis-parsed rST source: directive lines and literal-block
     // introducers. (Not a bare "::" check — prose like std::vector is legal.)
@@ -308,7 +321,7 @@ describe("Integration: Feed Utils", () => {
     try {
       siteConfig.feed.maxItems = 0;
       const items = getFeedItems('posts');
-      const allPosts = getAllPosts();
+      const allPosts = feedPostsUnion();
       const baseUrl = siteConfig.baseUrl.replace(/\/+$/, "");
       expect(items.length).toBe(allPosts.length);
       expect(items.map((item) => item.url).sort()).toEqual(
@@ -340,7 +353,7 @@ describe("Integration: Feed Utils", () => {
     try {
       siteConfig.feed.maxItems = 0;
       const items = getFeedItems('all');
-      const allPosts = getAllPosts();
+      const allPosts = feedPostsUnion();
       const allFlows = getAllFlows();
       const baseUrl = siteConfig.baseUrl.replace(/\/+$/, "");
       expect(items.map((item) => item.url).sort()).toEqual(

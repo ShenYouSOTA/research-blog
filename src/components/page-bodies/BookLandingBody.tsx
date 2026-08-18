@@ -76,6 +76,7 @@ export default function BookLandingBody({ locale, bookSlug }: BookLandingBodyPro
     siteTitle: resolveLocaleValue(siteConfig.title, locale),
     siteUrl,
     defaultOgImage: siteConfig.ogImage,
+    inLanguage: book.locale,
   });
 
   return (

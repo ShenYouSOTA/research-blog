@@ -25,6 +25,8 @@ import {
   getSeriesListUrl,
   getSeriesUrl,
   getStaticPageUrl,
+  localizeUrl,
+  splitLocaleFromPath,
   validateSeriesAutoPaths,
   withTrailingSlash,
 } from './urls';
@@ -194,8 +196,12 @@ export function localeHomeParams(): { slug: string }[] {
     .map(locale => ({ slug: locale }));
 }
 
-/** The URL prefix a series listing uses: its customPaths value, else (autoPaths) the slug itself. */
-function seriesListingPrefixes(locale: string): Array<{ prefix: string; seriesSlug: string }> {
+/**
+ * The URL prefix a series listing uses: its customPaths value, else (autoPaths)
+ * the slug itself. Exported for the sitemap, which advertises the locale
+ * mirror of each prefix listing.
+ */
+export function seriesListingPrefixes(locale: string): Array<{ prefix: string; seriesSlug: string }> {
   const customPaths = getSeriesCustomPaths();
   const customValues = new Set(Object.values(customPaths));
   const result: Array<{ prefix: string; seriesSlug: string }> = [];
@@ -362,4 +368,46 @@ export function getTwinnedPathManifest(): Record<string, string[]> {
     if (paths.length > 0) manifest[locale] = paths;
   }
   return manifest;
+}
+
+// ─── SEO URL derivation ──────────────────────────────────────────────────────
+
+/**
+ * Canonical + hreflang set for a content entity. `entityUrl` is its own
+ * (possibly locale-prefixed) URL; `locales` from get*ContentLocales().
+ *
+ * Twins canonicalize to the UNPREFIXED URL on both sides, with reciprocal
+ * alternates.languages and x-default = unprefixed. Single-locale entities
+ * (default-tree-only posts AND locale-tree originals) are self-canonical
+ * with no languages block.
+ */
+export function contentSeoUrls(entityUrl: string, locales: string[]): {
+  canonicalUrl: string;
+  languageAlternates?: Record<string, string>;
+} {
+  const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
+  const { path: unprefixed } = splitLocaleFromPath(entityUrl);
+  const canonicalPath = locales.includes(DEFAULT_LOCALE) ? unprefixed : entityUrl;
+  const canonicalUrl = withTrailingSlash(`${siteUrl}${canonicalPath}`);
+  if (locales.length < 2) return { canonicalUrl };
+  const languageAlternates: Record<string, string> = {};
+  for (const locale of locales) {
+    languageAlternates[locale] = withTrailingSlash(`${siteUrl}${localizeUrl(unprefixed, locale)}`);
+  }
+  languageAlternates['x-default'] = withTrailingSlash(`${siteUrl}${unprefixed}`);
+  return { canonicalUrl, languageAlternates };
+}
+
+/** Locales whose tree holds this book (default first) — hreflang input for book landings. */
+export function bookContentLocales(bookSlug: string): string[] {
+  return [DEFAULT_LOCALE, ...getNonDefaultLocales()].filter(
+    locale => getBookData(bookSlug, locale) !== null
+  );
+}
+
+/** Locales holding both the book and this chapter — hreflang input for chapter pages. */
+export function chapterContentLocales(bookSlug: string, chapterId: string): string[] {
+  return bookContentLocales(bookSlug).filter(
+    locale => getBookChapter(bookSlug, chapterId, locale) !== null
+  );
 }

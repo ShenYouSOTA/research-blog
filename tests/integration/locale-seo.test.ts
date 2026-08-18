@@ -1,0 +1,100 @@
+import { describe, expect, test } from 'bun:test';
+import { bookContentLocales, chapterContentLocales, contentSeoUrls } from '../../src/lib/locale-routes';
+import { generateMetadata as postsSlugMetadata } from '../../src/app/posts/[slug]/page';
+import { generateMetadata as topLevelMetadata } from '../../src/app/[slug]/page';
+import { generateMetadata as secondLevelMetadata } from '../../src/app/[slug]/[postSlug]/page';
+import { generateMetadata as deepMetadata } from '../../src/app/[slug]/[postSlug]/[...rest]/page';
+import { getAllBooks } from '../../src/lib/content/books';
+import { siteConfig } from '../../site.config';
+
+// Relies on the tracked zh fixtures: the twin post i18n-routing-considerations
+// (en+zh), the zh-original zh-original-demo, and the migrated zh pages.
+
+const base = siteConfig.baseUrl.replace(/\/+$/, '');
+
+const twinCanonical = `${base}/posts/i18n-routing-considerations/`;
+const twinLanguages = {
+  en: `${base}/posts/i18n-routing-considerations/`,
+  zh: `${base}/zh/posts/i18n-routing-considerations/`,
+  'x-default': `${base}/posts/i18n-routing-considerations/`,
+};
+
+describe('contentSeoUrls', () => {
+  test('twin → unprefixed canonical + full languages set, from either side', () => {
+    const fromZh = contentSeoUrls('/zh/posts/foo', ['en', 'zh']);
+    const fromEn = contentSeoUrls('/posts/foo', ['en', 'zh']);
+    for (const seo of [fromZh, fromEn]) {
+      expect(seo.canonicalUrl).toBe(`${base}/posts/foo/`);
+      expect(seo.languageAlternates).toEqual({
+        en: `${base}/posts/foo/`,
+        zh: `${base}/zh/posts/foo/`,
+        'x-default': `${base}/posts/foo/`,
+      });
+    }
+  });
+
+  test('locale-tree original → self-canonical /zh/ URL, no languages block', () => {
+    const seo = contentSeoUrls('/zh/posts/bar', ['zh']);
+    expect(seo.canonicalUrl).toBe(`${base}/zh/posts/bar/`);
+    expect(seo.languageAlternates).toBeUndefined();
+  });
+
+  test('single-locale default entity → plain self-canonical, no languages block', () => {
+    const seo = contentSeoUrls('/posts/baz', ['en']);
+    expect(seo.canonicalUrl).toBe(`${base}/posts/baz/`);
+    expect(seo.languageAlternates).toBeUndefined();
+  });
+});
+
+describe('detail-route metadata: canonical split + hreflang', () => {
+  test('posts/[slug] twin metadata: unprefixed canonical + en/zh/x-default', async () => {
+    const md = await postsSlugMetadata({
+      params: Promise.resolve({ slug: 'i18n-routing-considerations' }),
+    });
+    expect(md.alternates?.canonical).toBe(twinCanonical);
+    expect(md.alternates?.languages).toEqual(twinLanguages);
+  });
+
+  test('[...rest] zh twin metadata returns the SAME unprefixed canonical', async () => {
+    const md = await deepMetadata({
+      params: Promise.resolve({ slug: 'zh', postSlug: 'posts', rest: ['i18n-routing-considerations'] }),
+    });
+    expect(md.alternates?.canonical).toBe(twinCanonical);
+    expect(md.alternates?.languages).toEqual(twinLanguages);
+  });
+
+  test('[...rest] zh-original metadata is self-canonical without languages', async () => {
+    const md = await deepMetadata({
+      params: Promise.resolve({ slug: 'zh', postSlug: 'posts', rest: ['zh-original-demo'] }),
+    });
+    expect(md.alternates?.canonical).toBe(`${base}/zh/posts/zh-original-demo/`);
+    expect(md.alternates?.languages).toBeUndefined();
+  });
+
+  test('twin static page: both sides canonicalize to the unprefixed URL', async () => {
+    const enSide = await topLevelMetadata({ params: Promise.resolve({ slug: 'about' }) });
+    const zhSide = await secondLevelMetadata({
+      params: Promise.resolve({ slug: 'zh', postSlug: 'about' }),
+    });
+    for (const md of [enSide, zhSide]) {
+      expect(md.alternates?.canonical).toBe(`${base}/about/`);
+      expect(md.alternates?.languages).toEqual({
+        en: `${base}/about/`,
+        zh: `${base}/zh/about/`,
+        'x-default': `${base}/about/`,
+      });
+    }
+  });
+});
+
+describe('book/chapter locale sets (no zh book fixtures: single-locale)', () => {
+  test('default-tree books resolve to a single-locale set → no languages block', () => {
+    const books = getAllBooks();
+    expect(books.length).toBeGreaterThan(0);
+    for (const book of books) {
+      expect(bookContentLocales(book.slug)).toEqual([siteConfig.i18n.defaultLocale]);
+    }
+    // A chapter id no tree holds yields the empty set.
+    expect(chapterContentLocales(books[0].slug, 'nonexistent-chapter')).toHaveLength(0);
+  });
+});

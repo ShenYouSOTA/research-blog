@@ -30,6 +30,7 @@ export default function BookChapterBody({ locale, bookSlug, chapterId }: BookCha
     bookUrl: `${siteUrl}${localizeUrl(getBookUrl(bookSlug), locale)}`,
     siteTitle: resolveLocaleValue(siteConfig.title, locale),
     siteUrl,
+    inLanguage: book.locale,
   });
 
   return (

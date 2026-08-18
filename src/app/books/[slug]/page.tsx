@@ -6,7 +6,8 @@ import { siteConfig } from '../../../../site.config';
 import BookLandingBody from '@/components/page-bodies/BookLandingBody';
 import { resolveImageUrl } from '@/lib/json-ld';
 import { buildArticleMetadata } from '@/lib/metadata';
-import { getBookUrl, withTrailingSlash } from '@/lib/urls';
+import { getBookUrl } from '@/lib/urls';
+import { bookContentLocales, contentSeoUrls } from '@/lib/locale-routes';
 import { safeDecodeParam } from '@/lib/route-params';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
@@ -32,14 +33,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const ogImage = resolveImageUrl(book.coverImage, siteConfig.ogImage, siteUrl);
   const defaultOgImage = resolveImageUrl(undefined, siteConfig.ogImage, siteUrl);
 
-  const canonicalUrl = withTrailingSlash(`${siteUrl}${getBookUrl(book.slug)}`);
+  // Twinned books advertise the reciprocal hreflang set; the canonical stays
+  // this unprefixed URL either way (byte-identical for single-locale books).
+  const seo = contentSeoUrls(getBookUrl(book.slug), bookContentLocales(book.slug));
   return buildArticleMetadata({
     locale: DEFAULT_LOCALE,
     title: book.title,
     description: book.excerpt,
     type: 'website',
-    url: canonicalUrl,
-    canonicalUrl,
+    url: seo.canonicalUrl,
+    canonicalUrl: seo.canonicalUrl,
+    languageAlternates: seo.languageAlternates,
     ogImage,
     twitterCard: ogImage !== defaultOgImage ? 'summary_large_image' : 'summary',
   });

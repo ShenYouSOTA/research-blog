@@ -8,8 +8,9 @@ import { Metadata } from 'next';
 import { siteConfig } from '../../../site.config';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import { topLevelSlugParams, resolveTopLevelSlug } from '@/lib/route-aliases';
-import { localeHomeParams, resolveLocalizedPath } from '@/lib/locale-routes';
-import { isNonDefaultLocale } from '@/lib/urls';
+import { contentSeoUrls, localeHomeParams, resolveLocalizedPath } from '@/lib/locale-routes';
+import { getPageContentLocales } from '@/lib/content/posts';
+import { getStaticPageUrl, isNonDefaultLocale, localizeUrl } from '@/lib/urls';
 import { safeDecodeParam } from '@/lib/route-params';
 import RedirectPage from '@/components/RedirectPage';
 import LocaleHomeBody from '@/components/page-bodies/LocaleHomeBody';
@@ -61,11 +62,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       }
       return { title: 'Page Not Found' };
     }
-    case 'page':
+    case 'page': {
+      // Twin pages canonicalize here (the unprefixed URL) and advertise the
+      // reciprocal hreflang set; single-locale pages get a plain canonical.
+      const seo = contentSeoUrls(
+        localizeUrl(getStaticPageUrl(resolution.page.slug), resolution.page.locale),
+        getPageContentLocales(resolution.page)
+      );
       return {
         title: `${resolution.page.title} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
         description: resolution.page.excerpt,
+        alternates: {
+          canonical: seo.canonicalUrl,
+          ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
+        },
       };
+    }
     case 'redirect':
       return { title: resolution.post.title };
     default:

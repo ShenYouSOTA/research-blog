@@ -1,11 +1,30 @@
-import { getAllPosts } from './content/posts';
+import { getAllPosts, getTwinPost } from './content/posts';
 import { getAllFlows } from './content/flows';
 import { buildSlugRegistry, type SlugRegistryEntry } from './content/discovery';
 import { siteConfig } from '../../site.config';
-import { getPostUrl, getFlowUrl, withTrailingSlash } from './urls';
+import { getNonDefaultLocales, getPostUrl, getFlowUrl, withTrailingSlash } from './urls';
 import { resolveLocaleValue } from './i18n';
 import { markdownToHtml } from './markdown-to-html';
 import { sanitizeRenderedRstHtml } from './rst-sanitize';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
+/**
+ * The post set every feed surface shares: the default tree plus locale-tree
+ * ORIGINALS (posts with no default-tree twin). Content that migrated into
+ * content/<locale>/ must not vanish from subscriptions, while twins stay
+ * excluded — they would duplicate their canonical (unprefixed) item. Default
+ * tree items keep byte-identical URLs/GUIDs; getPostUrl carries the locale,
+ * so originals get their /<locale>/ GUID automatically.
+ */
+function getFeedPosts() {
+  return [
+    ...getAllPosts(),
+    ...getNonDefaultLocales().flatMap((locale) =>
+      getAllPosts(locale).filter((post) => !getTwinPost(post, DEFAULT_LOCALE))
+    ),
+  ];
+}
 
 export interface FeedItem {
   title: string;
@@ -94,7 +113,7 @@ export function getFeedItems(feedType: FeedType = 'main', includeFullContent: bo
     source: FeedContentSource;
   }
 
-  const getPostEntries = (): FeedEntry[] => getAllPosts().map((post) => {
+  const getPostEntries = (): FeedEntry[] => getFeedPosts().map((post) => {
     const url = withTrailingSlash(`${baseUrl}${getPostUrl(post)}`);
     return {
       item: {

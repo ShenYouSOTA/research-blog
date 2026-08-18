@@ -6,6 +6,7 @@ import { siteConfig } from '../../../../../site.config';
 import BookChapterBody from '@/components/page-bodies/BookChapterBody';
 import { resolveLocaleValue } from '@/lib/i18n';
 import { getBookChapterUrl } from '@/lib/urls';
+import { chapterContentLocales, contentSeoUrls } from '@/lib/locale-routes';
 import { safeDecodeParam } from '@/lib/route-params';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
@@ -71,9 +72,17 @@ export async function generateMetadata({ params }: { params: ChapterPageParams }
     ? book.coverImage
     : siteConfig.ogImage;
 
+  // Twinned chapters advertise the reciprocal hreflang set; the canonical
+  // stays this unprefixed URL either way.
+  const seo = contentSeoUrls(getBookChapterUrl(slug, chapterSlug), chapterContentLocales(slug, chapterSlug));
+
   return {
     title: `${chapter.title} - ${book.title} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     description: chapter.excerpt,
+    alternates: {
+      canonical: seo.canonicalUrl,
+      ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
+    },
     openGraph: {
       title: `${chapter.title} - ${book.title}`,
       description: chapter.excerpt,

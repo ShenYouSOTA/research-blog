@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../../site.config';
 import { resolveImageUrl } from '@/lib/json-ld';
-import { getPostUrl, getPostsBasePath, isNonDefaultLocale, localizeUrl, withTrailingSlash } from '@/lib/urls';
+import { getBookChapterUrl, getBookUrl, getNoteUrl, getPostUrl, getPostsBasePath, isNonDefaultLocale, localizeUrl } from '@/lib/urls';
 import { buildArticleMetadata } from '@/lib/metadata';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import RenderPostPage from '@/components/RenderPostPage';
@@ -10,9 +10,19 @@ import PostsListingBody from '@/components/page-bodies/PostsListingBody';
 import SeriesPrefixListingBody from '@/components/page-bodies/SeriesPrefixListingBody';
 import SeriesLandingBody from '@/components/page-bodies/SeriesLandingBody';
 import NotesIndexBody from '@/components/page-bodies/NotesIndexBody';
+import NoteDetailBody from '@/components/page-bodies/NoteDetailBody';
 import BookLandingBody from '@/components/page-bodies/BookLandingBody';
 import BookChapterBody from '@/components/page-bodies/BookChapterBody';
-import { localeDeepParams, resolveLocalizedPath, type LocalizedResolution } from '@/lib/locale-routes';
+import {
+  bookContentLocales,
+  chapterContentLocales,
+  contentSeoUrls,
+  localeDeepParams,
+  resolveLocalizedPath,
+  type LocalizedResolution,
+} from '@/lib/locale-routes';
+import { getPostContentLocales } from '@/lib/content/posts';
+import { getNoteContentLocales } from '@/lib/content/notes';
 import { safeDecodeParam } from '@/lib/route-params';
 import { getSeriesData, getSeriesPosts } from '@/lib/content/series';
 
@@ -53,17 +63,22 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
 
   switch (resolution?.kind) {
-    case 'post':
+    case 'post': {
+      // A zh TWIN canonicalizes to its unprefixed URL (same canonical as the
+      // default-tree side); a zh-original is self-canonical with no languages.
+      const seo = contentSeoUrls(getPostUrl(resolution.post), getPostContentLocales(resolution.post));
       return buildArticleMetadata({
         locale,
         title: resolution.post.title,
         description: resolution.post.excerpt,
         publishedTime: resolution.post.date,
         authors: resolution.post.authors,
-        canonicalUrl: withTrailingSlash(`${siteUrl}${getPostUrl(resolution.post)}`),
+        canonicalUrl: seo.canonicalUrl,
+        languageAlternates: seo.languageAlternates,
         ogImage: resolveImageUrl(resolution.post.coverImage, siteConfig.ogImage, siteUrl),
         twitterCard: 'summary_large_image',
       });
+    }
     case 'seriesPage':
     case 'seriesPrefixListing': {
       const seriesData = getSeriesData(resolution.seriesSlug, locale);
@@ -83,16 +98,49 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return { title: `${t('posts')} | ${siteTitle}`, description: t('posts_description') };
     case 'notesListing':
       return { title: `${t('notes')} | ${siteTitle}` };
-    case 'book':
+    case 'book': {
+      const seo = contentSeoUrls(
+        localizeUrl(getBookUrl(resolution.book.slug), locale),
+        bookContentLocales(resolution.book.slug)
+      );
       return {
         title: `${resolution.book.title} | ${siteTitle}`,
         description: resolution.book.excerpt,
+        alternates: {
+          canonical: seo.canonicalUrl,
+          ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
+        },
       };
-    case 'chapter':
+    }
+    case 'chapter': {
+      const seo = contentSeoUrls(
+        localizeUrl(getBookChapterUrl(resolution.book.slug, resolution.chapter.slug), locale),
+        chapterContentLocales(resolution.book.slug, resolution.chapter.slug)
+      );
       return {
         title: `${resolution.chapter.title} - ${resolution.book.title} | ${siteTitle}`,
         description: resolution.chapter.excerpt,
+        alternates: {
+          canonical: seo.canonicalUrl,
+          ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
+        },
       };
+    }
+    case 'note': {
+      const seo = contentSeoUrls(
+        localizeUrl(getNoteUrl(resolution.note.slug), locale),
+        getNoteContentLocales(resolution.note)
+      );
+      return buildArticleMetadata({
+        locale,
+        title: resolution.note.title,
+        description: resolution.note.excerpt,
+        publishedTime: resolution.note.date,
+        canonicalUrl: seo.canonicalUrl,
+        languageAlternates: seo.languageAlternates,
+        twitterCard: 'none',
+      });
+    }
     default:
       return { title: 'Page Not Found' };
   }
@@ -132,6 +180,8 @@ export default async function LocaleDeepPage({ params }: { params: DeepParams })
       return <BookLandingBody locale={locale} bookSlug={resolution.book.slug} />;
     case 'chapter':
       return <BookChapterBody locale={locale} bookSlug={resolution.book.slug} chapterId={resolution.chapter.slug} />;
+    case 'note':
+      return <NoteDetailBody locale={locale} noteSlug={resolution.note.slug} />;
     default:
       notFound();
   }

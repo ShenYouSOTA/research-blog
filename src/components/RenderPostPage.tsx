@@ -26,6 +26,7 @@ export default function RenderPostPage({ post, locale }: { post: PostData; local
     siteTitle: resolveLocaleValue(siteConfig.title, locale),
     siteUrl,
     defaultOgImage: siteConfig.ogImage,
+    inLanguage: post.locale,
   });
   const jsonLdScript = (
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />

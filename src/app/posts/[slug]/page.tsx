@@ -1,5 +1,6 @@
 import { resolveFromParam, safeDecodeParam, withDevEncodedVariants } from '@/lib/route-params';
-import { getPostBySlug, getAllPosts } from '@/lib/content/posts';
+import { getPostBySlug, getAllPosts, getPostContentLocales } from '@/lib/content/posts';
+import { contentSeoUrls } from '@/lib/locale-routes';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
@@ -82,13 +83,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
+  // Twins canonicalize to the unprefixed URL with reciprocal hreflang;
+  // single-locale posts keep their plain self-canonical (byte-identical).
+  const seo = contentSeoUrls(canonicalUrl, getPostContentLocales(post));
   return buildArticleMetadata({
     locale: DEFAULT_LOCALE,
     title: post.title,
     description: post.excerpt,
     publishedTime: post.date,
     authors: post.authors,
-    canonicalUrl: withTrailingSlash(`${siteUrl}${canonicalUrl}`),
+    canonicalUrl: seo.canonicalUrl,
+    languageAlternates: seo.languageAlternates,
     ogImage: resolveImageUrl(post.coverImage, siteConfig.ogImage, siteUrl),
     twitterCard: 'summary_large_image',
   });

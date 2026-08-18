@@ -229,6 +229,7 @@ export default function Home() {
     siteTitle: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
     siteUrl: siteConfig.baseUrl,
     description: resolveLocaleValue(siteConfig.description, DEFAULT_LOCALE),
+    inLanguage: DEFAULT_LOCALE,
   });
 
   return (

@@ -2,9 +2,10 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
 import { resolveImageUrl } from '@/lib/json-ld';
-import { getPostUrl, getPostsBasePath, isNonDefaultLocale, localizeUrl, withTrailingSlash } from '@/lib/urls';
+import { getPostUrl, getPostsBasePath, getStaticPageUrl, isNonDefaultLocale, localizeUrl, withTrailingSlash } from '@/lib/urls';
 import { buildArticleMetadata, createListingMetadata } from '@/lib/metadata';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
+import { getPageContentLocales, getPostContentLocales } from '@/lib/content/posts';
 import RedirectPage from '@/components/RedirectPage';
 import RenderPostPage from '@/components/RenderPostPage';
 import PostLayout from '@/layouts/PostLayout';
@@ -15,7 +16,7 @@ import SeriesIndexBody from '@/components/page-bodies/SeriesIndexBody';
 import BooksIndexBody from '@/components/page-bodies/BooksIndexBody';
 import NotesIndexBody from '@/components/page-bodies/NotesIndexBody';
 import { prefixedPostParams, resolvePrefixedPost } from '@/lib/route-aliases';
-import { localeSecondLevelParams, resolveLocalizedPath, type LocalizedResolution } from '@/lib/locale-routes';
+import { contentSeoUrls, localeSecondLevelParams, resolveLocalizedPath, type LocalizedResolution } from '@/lib/locale-routes';
 import { safeDecodeParam } from '@/lib/route-params';
 import { getAllSeries, getSeriesData } from '@/lib/content/series';
 import { getAllBooks } from '@/lib/content/books';
@@ -32,11 +33,21 @@ export const dynamicParams = false;
 function localizedMetadata(locale: string, resolution: LocalizedResolution): Metadata {
   const { t } = getTranslator(locale);
   switch (resolution?.kind) {
-    case 'page':
+    case 'page': {
+      // Twin pages canonicalize to the unprefixed URL; zh-only pages self-canonicalize.
+      const seo = contentSeoUrls(
+        localizeUrl(getStaticPageUrl(resolution.page.slug), resolution.page.locale),
+        getPageContentLocales(resolution.page)
+      );
       return {
         title: `${resolution.page.title} | ${resolveLocaleValue(siteConfig.title, locale)}`,
         description: resolution.page.excerpt,
+        alternates: {
+          canonical: seo.canonicalUrl,
+          ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
+        },
       };
+    }
     case 'postsListing':
       return {
         title: `${t('posts')} | ${resolveLocaleValue(siteConfig.title, locale)}`,
@@ -134,13 +145,17 @@ export async function generateMetadata({
     };
   }
 
+  // Twins canonicalize to the unprefixed URL with reciprocal hreflang;
+  // single-locale posts keep their plain self-canonical (byte-identical).
+  const seo = contentSeoUrls(getPostUrl(post), getPostContentLocales(post));
   return buildArticleMetadata({
     locale: DEFAULT_LOCALE,
     title: post.title,
     description: post.excerpt,
     publishedTime: post.date,
     authors: post.authors,
-    canonicalUrl: withTrailingSlash(`${siteUrl}${getPostUrl(post)}`),
+    canonicalUrl: seo.canonicalUrl,
+    languageAlternates: seo.languageAlternates,
     ogImage: resolveImageUrl(post.coverImage, siteConfig.ogImage, siteUrl),
     twitterCard: 'summary_large_image',
   });

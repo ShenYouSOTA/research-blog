@@ -27,6 +27,7 @@ interface SchemaBlogPosting {
   publisher: SchemaOrganization;
   image: SchemaImageObject;
   keywords: string | undefined;
+  inLanguage: string | undefined;
   mainEntityOfPage: { '@type': 'WebPage'; '@id': string };
 }
 
@@ -39,6 +40,7 @@ interface SchemaBook {
   author: SchemaPerson[];
   publisher: SchemaOrganization;
   image: SchemaImageObject | undefined;
+  inLanguage: string | undefined;
 }
 
 interface SchemaArticle {
@@ -49,6 +51,7 @@ interface SchemaArticle {
   datePublished: string;
   author: SchemaPerson[];
   publisher: SchemaOrganization;
+  inLanguage: string | undefined;
   isPartOf: { '@type': 'Book'; '@id': string; name: string };
 }
 
@@ -57,6 +60,7 @@ interface SchemaWebSite {
   name: string;
   url: string;
   description?: string;
+  inLanguage?: string;
 }
 
 type SchemaNode = SchemaBlogPosting | SchemaBook | SchemaArticle | SchemaWebSite;
@@ -112,6 +116,8 @@ export interface WebsiteJsonLdParams {
   siteTitle: string;
   siteUrl: string;
   description?: string;
+  /** BCP-47 language of the page (schema.org inLanguage); omitted when unset. */
+  inLanguage?: string;
 }
 
 // ── Public param types ────────────────────────────────────────────────────────
@@ -129,6 +135,8 @@ export interface PostJsonLdParams {
   siteTitle: string;
   siteUrl: string;
   defaultOgImage: string;
+  /** BCP-47 language of the post (schema.org inLanguage); omitted when unset. */
+  inLanguage?: string;
 }
 
 export interface BookJsonLdParams {
@@ -143,6 +151,8 @@ export interface BookJsonLdParams {
   siteTitle: string;
   siteUrl: string;
   defaultOgImage: string;
+  /** BCP-47 language of the book (schema.org inLanguage); omitted when unset. */
+  inLanguage?: string;
 }
 
 export interface BookChapterJsonLdParams {
@@ -159,12 +169,14 @@ export interface BookChapterJsonLdParams {
   bookUrl: string;
   siteTitle: string;
   siteUrl: string;
+  /** BCP-47 language of the chapter (schema.org inLanguage); omitted when unset. */
+  inLanguage?: string;
 }
 
 // ── Builders ──────────────────────────────────────────────────────────────────
 
 export function buildWebsiteJsonLd(params: WebsiteJsonLdParams): SchemaGraph {
-  const { siteTitle, siteUrl, description } = params;
+  const { siteTitle, siteUrl, description, inLanguage } = params;
   const base = siteUrl.replace(/\/+$/, '');
 
   const node: SchemaWebSite = {
@@ -172,13 +184,14 @@ export function buildWebsiteJsonLd(params: WebsiteJsonLdParams): SchemaGraph {
     name: siteTitle,
     url: base,
     description: description || undefined,
+    ...(inLanguage ? { inLanguage } : {}),
   };
 
   return wrapGraph([node]);
 }
 
 export function buildPostJsonLd(params: PostJsonLdParams): SchemaGraph {
-  const { post, postUrl, siteTitle, siteUrl, defaultOgImage } = params;
+  const { post, postUrl, siteTitle, siteUrl, defaultOgImage, inLanguage } = params;
   const base = siteUrl.replace(/\/+$/, '');
 
   const node: SchemaBlogPosting = {
@@ -192,6 +205,7 @@ export function buildPostJsonLd(params: PostJsonLdParams): SchemaGraph {
     publisher: buildPublisher(siteTitle, base),
     image: { '@type': 'ImageObject', url: resolveImageUrl(post.coverImage, defaultOgImage, base) },
     keywords: post.tags.length > 0 ? post.tags.join(', ') : undefined,
+    inLanguage: inLanguage || undefined,
     mainEntityOfPage: { '@type': 'WebPage', '@id': postUrl },
   };
 
@@ -199,7 +213,7 @@ export function buildPostJsonLd(params: PostJsonLdParams): SchemaGraph {
 }
 
 export function buildBookJsonLd(params: BookJsonLdParams): SchemaGraph {
-  const { book, bookUrl, siteTitle, siteUrl, defaultOgImage } = params;
+  const { book, bookUrl, siteTitle, siteUrl, defaultOgImage, inLanguage } = params;
   const base = siteUrl.replace(/\/+$/, '');
   const imageUrl = resolveImageUrl(book.coverImage, defaultOgImage, base);
 
@@ -212,13 +226,14 @@ export function buildBookJsonLd(params: BookJsonLdParams): SchemaGraph {
     author: buildAuthors(book.authors),
     publisher: buildPublisher(siteTitle, base),
     image: imageUrl ? { '@type': 'ImageObject', url: imageUrl } : undefined,
+    inLanguage: inLanguage || undefined,
   };
 
   return wrapGraph([node]);
 }
 
 export function buildBookChapterJsonLd(params: BookChapterJsonLdParams): SchemaGraph {
-  const { chapter, book, chapterUrl, bookUrl, siteTitle, siteUrl } = params;
+  const { chapter, book, chapterUrl, bookUrl, siteTitle, siteUrl, inLanguage } = params;
   const base = siteUrl.replace(/\/+$/, '');
 
   const node: SchemaArticle = {
@@ -229,6 +244,7 @@ export function buildBookChapterJsonLd(params: BookChapterJsonLdParams): SchemaG
     datePublished: book.date,
     author: buildAuthors(book.authors),
     publisher: buildPublisher(siteTitle, base),
+    inLanguage: inLanguage || undefined,
     isPartOf: { '@type': 'Book', '@id': bookUrl, name: book.title },
   };
 
