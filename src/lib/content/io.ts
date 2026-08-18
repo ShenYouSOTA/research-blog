@@ -53,6 +53,35 @@ export function treePathFor(fullPath: string, locale: string): string {
   return rel.replace(/\.(mdx?|rst)$/, '').replace(/\/(index|README)$/, '');
 }
 
+/**
+ * The retired sibling-file convention (about.zh.mdx next to about.mdx) must
+ * not silently coexist with locale trees — a leftover sibling would become an
+ * unreachable shadow translation. Returns the offending locale suffix when a
+ * filename still uses it, null otherwise. Pure; exported for tests.
+ */
+export function legacyLocaleSuffix(fileName: string, locales: string[]): string | null {
+  const base = fileName.replace(/\.(mdx?|rst)$/, '');
+  if (base === fileName) return null; // not a content file
+  const parts = base.split('.');
+  if (parts.length < 2) return null;
+  const suffix = parts[parts.length - 1];
+  return locales.includes(suffix) ? suffix : null;
+}
+
+/** Build-time throw for legacy locale sibling files, with the migration hint. */
+export function assertNotLegacyLocaleSibling(fileName: string, parentDir: string): void {
+  const suffix = legacyLocaleSuffix(fileName, siteConfig.i18n.locales);
+  if (!suffix) return;
+  const relDir = path.relative(process.cwd(), parentDir).split(path.sep).join('/');
+  const hint = suffix === siteConfig.i18n.defaultLocale
+    ? `Default-locale content belongs in the base file — drop the ".${suffix}" suffix.`
+    : `Move it into the content/${suffix}/ tree at the same relative path ` +
+      `(e.g. git mv content/about.${suffix}.mdx content/${suffix}/about.mdx).`;
+  throw new Error(
+    `[amytis] Locale sibling files are no longer supported: ${relDir}/${fileName}. ${hint}`
+  );
+}
+
 /** Throws unless `locale` is the default or a configured (i18n-enabled) locale. */
 export function assertKnownLocale(locale: string): void {
   if (locale === siteConfig.i18n.defaultLocale) return;

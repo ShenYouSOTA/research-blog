@@ -10,6 +10,7 @@ import {
   isRstFilename,
   parseSlugAndDate,
   assertSafeSeriesSlug,
+  assertNotLegacyLocaleSibling,
 } from './io';
 import { createKeyedMemo, createProdKeyedMemo } from './cache';
 
@@ -113,6 +114,7 @@ export function getSeriesContentEntries(seriesSlug: string, locale: string = DEF
       const isMarkdown = isMarkdownFilename(item.name);
       const isRst = isRstFilename(item.name);
       if (!isMarkdown && !isRst) continue;
+      assertNotLegacyLocaleSibling(item.name, seriesPath);
 
       const itemFormat: SeriesFormat = isRst ? 'rst' : 'markdown';
       if (itemFormat !== indexInfo.format) {

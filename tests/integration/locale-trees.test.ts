@@ -4,6 +4,7 @@ import {
   classifyContentRootDir,
   contentRoot,
   getActiveContentLocales,
+  legacyLocaleSuffix,
   treePathFor,
   validateLocaleTreeEntry,
 } from '../../src/lib/content/io';
@@ -91,8 +92,14 @@ describe('locale content trees', () => {
     expect(getSeriesTitle('zh-demo-series')).toBeUndefined();
   });
 
-  test('zh pages are empty until page files move into the tree', () => {
-    expect(Array.isArray(getAllPages('zh'))).toBe(true);
+  test('zh pages migrated from sibling files are tree pages with twins', () => {
+    const zhPageSlugs = getAllPages('zh').map(p => p.slug).sort();
+    expect(zhPageSlugs).toEqual(['about', 'links', 'privacy']);
+    for (const page of getAllPages('zh')) {
+      expect(page.locale).toBe('zh');
+      // Every migrated page twins its default-tree counterpart by treePath.
+      expect(getAllPages().some(p => p.treePath === page.treePath)).toBe(true);
+    }
   });
 
   test('unknown locale argument throws; configured-but-absent tree is sparse', () => {
@@ -124,6 +131,17 @@ describe('locale tree validation cores (pure, defaultLocale-agnostic)', () => {
     expect(() => validateLocaleTreeEntry('zh', 'ja')).toThrow(/cannot nest/);
     expect(() => validateLocaleTreeEntry('zh', 'posts')).not.toThrow();
     expect(() => validateLocaleTreeEntry('zh', 'books')).not.toThrow();
+  });
+
+  test('legacyLocaleSuffix flags retired sibling filenames only', () => {
+    const locales = ['en', 'zh'];
+    expect(legacyLocaleSuffix('about.zh.mdx', locales)).toBe('zh');
+    expect(legacyLocaleSuffix('about.en.md', locales)).toBe('en');
+    expect(legacyLocaleSuffix('post.zh.rst', locales)).toBe('zh');
+    expect(legacyLocaleSuffix('about.mdx', locales)).toBeNull();
+    expect(legacyLocaleSuffix('2026-01-12-foo.md', locales)).toBeNull();
+    expect(legacyLocaleSuffix('v2.0-notes.md', locales)).toBeNull();
+    expect(legacyLocaleSuffix('image.png', locales)).toBeNull();
   });
 
   test('treePathFor strips extensions and collapses index/README onto the folder', () => {

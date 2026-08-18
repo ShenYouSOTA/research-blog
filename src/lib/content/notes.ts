@@ -6,7 +6,7 @@ import { siteConfig } from '../../../site.config';
 import { byDateDesc } from '../sort';
 import { extractContentMetrics } from '../text-metrics';
 import type { Heading } from './types';
-import { domainDir, treePathFor, getActiveContentLocales, assertKnownLocale, readUtf8File } from './io';
+import { domainDir, treePathFor, getActiveContentLocales, assertKnownLocale, assertNotLegacyLocaleSibling, readUtf8File } from './io';
 import { createProdKeyedMemo } from './cache';
 import { dateField, draftField, tagsField, invalidFrontmatterError } from './schema';
 
@@ -97,6 +97,7 @@ export function getAllNotes(locale: string = DEFAULT_LOCALE): NoteData[] {
     for (const item of items) {
       if (!item.isFile()) continue;
       if (!item.name.endsWith('.md') && !item.name.endsWith('.mdx')) continue;
+      assertNotLegacyLocaleSibling(item.name, localeNotesDir);
       const slug = item.name.replace(/\.mdx?$/, '');
       const fullPath = path.join(localeNotesDir, item.name);
       // Let parse errors propagate — a malformed note must fail the build, not

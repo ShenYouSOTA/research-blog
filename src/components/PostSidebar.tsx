@@ -20,7 +20,6 @@ interface PostSidebarProps {
   collectionContexts?: CollectionContext[];
   currentSlug: string;
   headings: Heading[];
-  localeHeadings?: Record<string, Heading[]>;
   shareUrl?: string;
   shareTitle?: string;
 }
@@ -38,8 +37,8 @@ function getVisibleIndices(total: number, current: number): (number | 'ellipsis'
   return result;
 }
 
-export default function PostSidebar({ seriesSlug, seriesTitle, posts, collectionContexts, currentSlug, headings, localeHeadings, shareUrl, shareTitle }: PostSidebarProps) {
-  const { t, language } = useLanguage();
+export default function PostSidebar({ seriesSlug, seriesTitle, posts, collectionContexts, currentSlug, headings, shareUrl, shareTitle }: PostSidebarProps) {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const collectionParam = searchParams.get('collection');
   const activeCollection = collectionParam
@@ -54,7 +53,7 @@ export default function PostSidebar({ seriesSlug, seriesTitle, posts, collection
   const postHref = (post: PostNavItem) =>
     isCollectionContext ? getPostUrlInCollection(post, activeCollection!.slug) : getPostUrl(post);
 
-  const activeHeadings = localeHeadings?.[language] ?? headings;
+  const activeHeadings = headings;
   const hasSeries = !!(effectiveSlug && effectivePosts && effectivePosts.length > 0);
   const currentIndex = hasSeries ? effectivePosts!.findIndex(p => p.slug === currentSlug) : -1;
   // Progress, the "X / N" counter, and "past" styling all key off the rendered

@@ -68,7 +68,6 @@ export interface PostData {
   renderedHtml?: string;
   plainText?: string;
   headings: Heading[];
-  contentLocales?: Record<string, { content: string; title?: string; excerpt?: string; headings?: Heading[] }>;
   /** Public-relative base path used for resolving co-located images (e.g. "posts/my-post" or "posts" for root flat files). */
   imageBaseSlug: string;
   sourceFormat?: 'markdown' | 'rst';

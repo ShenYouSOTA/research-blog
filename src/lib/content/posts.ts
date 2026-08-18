@@ -1,17 +1,14 @@
 import fs from 'fs';
 import path from 'path';
-import matter from 'gray-matter';
 import { siteConfig } from '../../../site.config';
 import { byDateDesc } from '../sort';
-import { getHeadings } from '../text-metrics';
-import type { PostData, Heading } from './types';
+import type { PostData } from './types';
 import {
-  pagesDirectory,
   contentRoot,
   domainDir,
   getActiveContentLocales,
   assertKnownLocale,
-  readUtf8File,
+  assertNotLegacyLocaleSibling,
   parseSlugAndDate,
 } from './io';
 import { createKeyedMemo } from './cache';
@@ -88,6 +85,7 @@ export function getAllPostsIncludingUnpublished(locale: string = DEFAULT_LOCALE)
         // Standard Posts logic (outside series)
         if (item.isFile()) {
           if (!item.name.endsWith('.mdx') && !item.name.endsWith('.md')) return;
+          assertNotLegacyLocaleSibling(item.name, dir);
           fullPath = path.join(dir, item.name);
           allPostsData.push(parseMarkdownFile(fullPath, slug, dateFromFileName, undefined, locale));
         } else if (item.isDirectory()) {
@@ -189,48 +187,6 @@ export function getTwinPage(page: Pick<PostData, 'treePath'>, locale: string): P
 }
 
 /**
- * Load the content and frontmatter of a locale variant file, e.g. about.zh.mdx.
- * Contract: returns null only when no variant file exists (locale variants are
- * optional). A variant that exists but cannot be read or parsed throws — a
- * malformed translation must fail the build, not silently drop the locale
- * (strict-build invariant).
- */
-function loadLocaleContent(slug: string, locale: string): { content: string; title?: string; excerpt?: string; headings?: Heading[] } | null {
-  for (const ext of ['.mdx', '.md']) {
-    // The `${slug}.${locale}${ext}` template is a build-time content lookup,
-    // not a module to trace. Without these turbopackIgnore annotations
-    // Turbopack expands it to a `<dynamic>.<dynamic>.<ext>` glob and traces the
-    // whole project (also surfaces as the next.config.ts NFT warning). See CLAUDE.md.
-    const filePath = path.join(/* turbopackIgnore: true */ pagesDirectory, `${slug}.${locale}${ext}`);
-    if (fs.existsSync(/* turbopackIgnore: true */ filePath)) {
-      const { data, content } = matter(readUtf8File(filePath));
-      const body = content.replace(/^\s*#\s+[^\n]+/, '').trim();
-      return {
-        content: body,
-        title: typeof data.title === 'string' ? data.title : undefined,
-        excerpt: typeof data.excerpt === 'string' ? data.excerpt : undefined,
-        headings: getHeadings(body),
-      };
-    }
-  }
-  return null;
-}
-
-/**
- * Collect contentLocales for all non-default locales that have a variant file.
- */
-function attachContentLocales(page: PostData, slug: string): PostData {
-  const defaultLocale = siteConfig.i18n.defaultLocale;
-  const otherLocales = siteConfig.i18n.locales.filter(l => l !== defaultLocale);
-  const contentLocales: NonNullable<PostData['contentLocales']> = {};
-  for (const locale of otherLocales) {
-    const localeData = loadLocaleContent(slug, locale);
-    if (localeData !== null) contentLocales[locale] = localeData;
-  }
-  return Object.keys(contentLocales).length > 0 ? { ...page, contentLocales } : page;
-}
-
-/**
  * Contract: returns null only when the page file does not exist (static pages
  * are optional — an absent about.md is fine). Any error past the existence
  * check — malformed frontmatter, unreadable file — propagates and fails the
@@ -244,8 +200,7 @@ export function getPageBySlug(slug: string, locale: string = DEFAULT_LOCALE): Po
     fullPath = path.join(/* turbopackIgnore: true */ treeRoot, `${slug}.md`);
   }
   if (!fs.existsSync(/* turbopackIgnore: true */ fullPath)) return null;
-  const page = parseMarkdownFile(fullPath, slug, undefined, undefined, locale);
-  return locale === DEFAULT_LOCALE ? attachContentLocales(page, slug) : page;
+  return parseMarkdownFile(fullPath, slug, undefined, undefined, locale);
 }
 
 const allPagesMemo = createKeyedMemo<string, PostData[]>();
@@ -260,19 +215,15 @@ export function getAllPages(locale: string = DEFAULT_LOCALE): PostData[] {
       .filter(item => {
         if (!item.isFile()) return false;
         if (!item.name.endsWith('.mdx') && !item.name.endsWith('.md')) return false;
-        // Exclude locale variant files (e.g. about.zh.mdx, about.en.mdx) — they are not standalone routes
-        const base = item.name.replace(/\.mdx?$/, '');
-        const parts = base.split('.');
-        if (parts.length > 1 && siteConfig.i18n.locales.includes(parts[parts.length - 1])) {
-          return false;
-        }
+        // Legacy sibling variants (about.zh.mdx) throw with a migration hint —
+        // they'd otherwise be unreachable shadow translations of tree files.
+        assertNotLegacyLocaleSibling(item.name, treeRoot);
         return true;
       })
       .map(item => {
         const slug = item.name.replace(/\.mdx?$/, '');
         const fullPath = path.join(treeRoot, item.name);
-        const page = parseMarkdownFile(fullPath, slug, undefined, undefined, locale);
-        return locale === DEFAULT_LOCALE ? attachContentLocales(page, slug) : page;
+        return parseMarkdownFile(fullPath, slug, undefined, undefined, locale);
       });
   });
 }
