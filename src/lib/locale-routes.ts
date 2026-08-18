@@ -32,6 +32,7 @@ import {
 } from './urls';
 import { resolvePrefixedPost, resolveSeriesListingPrefix } from './route-aliases';
 import { resolveFromParam, safeDecodeParam, withDevEncodedVariants } from './route-params';
+import { isFeatureEnabled } from './features';
 
 /**
  * The locale URL surface: /<locale>/… serves the SAME URL grammar as the
@@ -54,8 +55,22 @@ const NOTES_PAGE_SIZE = siteConfig.pagination.notes;
 
 export type LocaleContentKind = 'any' | 'posts' | 'pages' | 'series' | 'books' | 'notes';
 
-/** Sparse-generation gate: does this locale's tree hold content of a kind? */
+/**
+ * Feature flag guarding each locale content kind, mirroring the unprefixed
+ * routes exactly: /series and series/[slug] gate on `series`, books surfaces
+ * on `books`, notes belong to the `flow` feature; posts and pages are
+ * ungated. Exported so tests pin the mapping.
+ */
+export const LOCALE_KIND_FEATURES = { series: 'series', books: 'books', notes: 'flow' } as const;
+
+function kindEnabled(kind: LocaleContentKind): boolean {
+  const feature = (LOCALE_KIND_FEATURES as Partial<Record<LocaleContentKind, 'series' | 'books' | 'flow'>>)[kind];
+  return feature ? isFeatureEnabled(feature) : true;
+}
+
+/** Sparse-generation gate: does this locale's tree hold content of a kind — and is the kind's feature enabled? */
 export function hasLocaleContent(locale: string, kind: LocaleContentKind): boolean {
+  if (!kindEnabled(kind)) return false;
   switch (kind) {
     case 'posts': return getListingPosts(locale).length > 0;
     case 'pages': return getAllPages(locale).length > 0;
@@ -134,6 +149,7 @@ export function resolveLocalizedPath(locale: string, segments: string[]): Locali
   }
 
   if (first === 'series') {
+    if (!kindEnabled('series')) return null; // mirrors series/[slug]'s feature gate
     if (n === 2) {
       const data = resolveFromParam(segments[1], slug => getSeriesData(slug, locale));
       return data ? { kind: 'seriesPage', locale, seriesSlug: data.slug, page: 1 } : null;
@@ -147,6 +163,7 @@ export function resolveLocalizedPath(locale: string, segments: string[]): Locali
   }
 
   if (first === 'books') {
+    if (!kindEnabled('books')) return null; // mirrors books/[slug]'s feature gate
     const book = resolveFromParam(segments[1], slug => getBookData(slug, locale));
     if (!book) return null;
     if (n === 2) return { kind: 'book', locale, book };
@@ -156,6 +173,7 @@ export function resolveLocalizedPath(locale: string, segments: string[]): Locali
   }
 
   if (first === 'notes') {
+    if (!kindEnabled('notes')) return null; // notes belong to the `flow` feature, like notes/[slug]
     if (n === 2) {
       const note = resolveFromParam(segments[1], slug => getNoteBySlug(slug, locale));
       return note ? { kind: 'note', locale, note } : null;
@@ -269,13 +287,16 @@ export function localeDeepParams(): { slug: string; postSlug: string; rest: stri
       push(locale, `/${getPostsBasePath()}/page/${i}`);
     }
 
-    // Series landings (+ pagination) and prefix-listing pagination.
+    // Series landings (+ pagination) mirror series/[slug]'s feature gate;
+    // prefix listings are ungated like the unprefixed [slug] surface.
     const allSeries = getAllSeries(locale);
-    for (const [seriesSlug, posts] of Object.entries(allSeries)) {
-      push(locale, getSeriesUrl(seriesSlug));
-      const totalPages = Math.ceil(posts.length / SERIES_PAGE_SIZE);
-      for (let i = 2; i <= totalPages; i++) {
-        push(locale, `${getSeriesUrl(seriesSlug)}/page/${i}`);
+    if (kindEnabled('series')) {
+      for (const [seriesSlug, posts] of Object.entries(allSeries)) {
+        push(locale, getSeriesUrl(seriesSlug));
+        const totalPages = Math.ceil(posts.length / SERIES_PAGE_SIZE);
+        for (let i = 2; i <= totalPages; i++) {
+          push(locale, `${getSeriesUrl(seriesSlug)}/page/${i}`);
+        }
       }
     }
     for (const { prefix, seriesSlug } of seriesListingPrefixes(locale)) {
@@ -286,22 +307,26 @@ export function localeDeepParams(): { slug: string; postSlug: string; rest: stri
     }
 
     // Books and chapters.
-    for (const book of getAllBooks(locale)) {
-      push(locale, getBookUrl(book.slug));
-      for (const ch of book.chapters) {
-        if (getBookChapter(book.slug, ch.id, locale) !== null) {
-          push(locale, getBookChapterUrl(book.slug, ch.id));
+    if (kindEnabled('books')) {
+      for (const book of getAllBooks(locale)) {
+        push(locale, getBookUrl(book.slug));
+        for (const ch of book.chapters) {
+          if (getBookChapter(book.slug, ch.id, locale) !== null) {
+            push(locale, getBookChapterUrl(book.slug, ch.id));
+          }
         }
       }
     }
 
     // Notes (+ pagination).
-    const notes = getAllNotes(locale);
-    for (const note of notes) {
-      push(locale, getNoteUrl(note.slug));
-    }
-    for (let i = 2; i <= Math.ceil(notes.length / NOTES_PAGE_SIZE); i++) {
-      push(locale, `/notes/page/${i}`);
+    if (kindEnabled('notes')) {
+      const notes = getAllNotes(locale);
+      for (const note of notes) {
+        push(locale, getNoteUrl(note.slug));
+      }
+      for (let i = 2; i <= Math.ceil(notes.length / NOTES_PAGE_SIZE); i++) {
+        push(locale, `/notes/page/${i}`);
+      }
     }
   }
   return params;
@@ -336,23 +361,27 @@ function twinnedPathsFor(locale: string): string[] {
     for (const page of getAllPages(locale)) {
       if (getTwinPage(page, DEFAULT_LOCALE)) add(getStaticPageUrl(page.slug));
     }
-    for (const note of getAllNotes(locale)) {
-      if (getTwinNote(note, DEFAULT_LOCALE)) add(getNoteUrl(note.slug));
+    if (kindEnabled('notes')) {
+      for (const note of getAllNotes(locale)) {
+        if (getTwinNote(note, DEFAULT_LOCALE)) add(getNoteUrl(note.slug));
+      }
     }
     for (const [seriesSlug] of Object.entries(getAllSeries(locale))) {
       if (getSeriesData(seriesSlug, DEFAULT_LOCALE)) {
-        add(getSeriesUrl(seriesSlug));
+        if (kindEnabled('series')) add(getSeriesUrl(seriesSlug));
         const prefix = seriesListingPrefixes(locale).find(p => p.seriesSlug === seriesSlug)?.prefix;
         if (prefix) add(`/${prefix}`);
       }
     }
-    for (const book of getAllBooks(locale)) {
-      const twinBook = getBookData(book.slug, DEFAULT_LOCALE);
-      if (!twinBook) continue;
-      add(getBookUrl(book.slug));
-      const twinChapterIds = new Set(twinBook.chapters.map(ch => ch.id));
-      for (const ch of book.chapters) {
-        if (twinChapterIds.has(ch.id)) add(getBookChapterUrl(book.slug, ch.id));
+    if (kindEnabled('books')) {
+      for (const book of getAllBooks(locale)) {
+        const twinBook = getBookData(book.slug, DEFAULT_LOCALE);
+        if (!twinBook) continue;
+        add(getBookUrl(book.slug));
+        const twinChapterIds = new Set(twinBook.chapters.map(ch => ch.id));
+        for (const ch of book.chapters) {
+          if (twinChapterIds.has(ch.id)) add(getBookChapterUrl(book.slug, ch.id));
+        }
       }
     }
 

@@ -139,3 +139,13 @@ describe('getTwinnedPathManifest', () => {
     expect(zh).not.toContain('/subscribe/');
   });
 });
+
+describe('feature gates mirror the unprefixed routes', () => {
+  test('kind → feature mapping is pinned', async () => {
+    const { LOCALE_KIND_FEATURES } = await import('../../src/lib/locale-routes');
+    // series/[slug] gates on `series`, books surfaces on `books`, notes
+    // belong to `flow`; posts and pages are deliberately ungated (their
+    // unprefixed routes have no isFeatureEnabled check).
+    expect(LOCALE_KIND_FEATURES).toEqual({ series: 'series', books: 'books', notes: 'flow' });
+  });
+});
