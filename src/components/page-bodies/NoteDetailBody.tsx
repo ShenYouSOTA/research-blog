@@ -28,8 +28,8 @@ export default function NoteDetailBody({ locale, noteSlug }: NoteDetailBodyProps
   const note = getNoteBySlug(noteSlug, locale);
   if (!note) notFound();
 
-  const slugRegistry = buildSlugRegistry();
-  const backlinks = getBacklinks(note.slug);
+  const slugRegistry = buildSlugRegistry(locale);
+  const backlinks = getBacklinks(note.slug, locale);
   const { prev, next } = getAdjacentNotes(note.slug, locale);
 
   const showToc = note.toc !== false && note.headings.length > 0;

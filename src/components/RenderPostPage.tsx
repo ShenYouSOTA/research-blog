@@ -38,16 +38,16 @@ export default function RenderPostPage({ post, locale }: { post: PostData; local
 
   const relatedPosts = getRelatedPosts(post);
   const { prev, next } = getAdjacentPosts(post);
-  const slugRegistry = buildSlugRegistry();
-  const backlinks = getBacklinks(post.slug);
+  const slugRegistry = buildSlugRegistry(post.locale);
+  const backlinks = getBacklinks(post.slug, post.locale);
   const collectionContexts = getCollectionsForPost(post);
   let seriesPosts: PostNavItem[] = [];
   let seriesTitle: string | undefined;
 
   if (post.series) {
     // Project to nav items so sibling article bodies stay out of the client payload.
-    seriesPosts = toPostNavItems(getSeriesPosts(post.series));
-    const seriesData = getSeriesData(post.series);
+    seriesPosts = toPostNavItems(getSeriesPosts(post.series, post.locale));
+    const seriesData = getSeriesData(post.series, post.locale);
     seriesTitle = seriesData?.title;
   }
 
