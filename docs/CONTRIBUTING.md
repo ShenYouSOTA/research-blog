@@ -129,6 +129,38 @@ bun run add-series-redirects --dry-run          # preview without writing
 bun run clean                       # removes .next, out, public/posts
 ```
 
+### Translating content (locale trees)
+
+With `i18n.enabled: true`, put non-default-locale content in a tree mirroring
+`content/` — the file's location IS its language, no frontmatter field:
+
+```
+content/posts/foo.md          → /posts/foo/        (default locale)
+content/zh/posts/foo.md       → /zh/posts/foo/     (its translation — same relative path)
+content/zh/posts/original.md  → /zh/posts/original/ (a zh-only original, no English side)
+content/zh/about.mdx          → /zh/about/
+content/zh/series/<s>/…       → /zh/series/<s>/ …  (a zh series needs its own index file)
+```
+
+Rules the build enforces (throws, not warnings):
+
+- The translation must sit at the **same tree-relative path** as its
+  counterpart to pair as a twin (drives hreflang and the language switch).
+- `content/<defaultLocale>/` is invalid — default-locale content lives at the
+  root. Unknown locale-shaped directories (`content/ja/` without `ja` in
+  `i18n.locales`) throw.
+- The old sibling convention (`about.zh.mdx`) is retired and throws with a
+  migration hint.
+- A locale-tree series does not inherit the default tree's index — create
+  `content/<locale>/series/<s>/index.md` alongside the posts.
+- Flow locale trees (`content/<locale>/flows/`) are not supported yet.
+
+Locale pages generate **sparsely**: `/zh/posts/` exists only when the zh tree
+has posts; pages without a translation simply have no `/zh/` twin (the
+language switch falls back to the locale home). Moving existing published
+content into a locale tree changes its URL — declare the old paths in
+`redirectFrom` (see `docs/guides/migrating-content-to-locale-trees.md`).
+
 ## Running Tests
 
 ```bash
