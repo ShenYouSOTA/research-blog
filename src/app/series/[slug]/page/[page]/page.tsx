@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../../../site.config';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
-import { getSeriesListUrl, withTrailingSlash } from '@/lib/urls';
+import { getSeriesListUrl, localizeUrl, withTrailingSlash } from '@/lib/urls';
 import SeriesLandingBody from '@/components/page-bodies/SeriesLandingBody';
 import RedirectPage from '@/components/RedirectPage';
 import { seriesPageParams, resolveSeriesParam } from '@/lib/route-aliases';
@@ -45,7 +45,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
   const page = parseInt(pageStr);
   const resolution = resolveSeriesParam(rawSlug);
   if (resolution.kind === 'alias') {
-    return <RedirectPage to={`${getSeriesListUrl()}/${resolution.canonicalSlug}/page/${page}`} />;
+    return <RedirectPage to={localizeUrl(`${getSeriesListUrl()}/${resolution.canonicalSlug}/page/${page}`, resolution.data.locale)} />;
   }
   if (isNaN(page) || page < 2) notFound();
   return <SeriesLandingBody locale={DEFAULT_LOCALE} seriesSlug={resolution.slug} page={page} />;

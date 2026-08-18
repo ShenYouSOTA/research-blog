@@ -7,6 +7,7 @@ import { getPostsBasePath, getPostUrl, withTrailingSlash } from '@/lib/urls';
 import { resolveImageUrl } from '@/lib/json-ld';
 import { buildArticleMetadata } from '@/lib/metadata';
 import RedirectPage from '@/components/RedirectPage';
+import { postsAcrossTrees } from '@/lib/route-aliases';
 import RenderPostPage from '@/components/RenderPostPage';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
@@ -39,7 +40,8 @@ export async function generateStaticParams() {
   }
 
   // Also include redirectFrom slugs at this basePath (e.g. /posts/old-name → /posts/new-name).
-  for (const post of posts) {
+  // Scans every locale tree: migrated content keeps its old /posts/ URL as a redirect.
+  for (const post of postsAcrossTrees()) {
     for (const from of post.redirectFrom ?? []) {
       const segments = from.split('/').filter(Boolean);
       if (segments.length !== 2 || segments[0] !== basePath) continue;
@@ -61,7 +63,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const currentPath = `/${basePath}/${slug}`;
   const post =
     resolvePostFromParam(rawSlug) ??
-    getAllPosts().find(p => p.redirectFrom?.includes(currentPath));
+    postsAcrossTrees().find(p => p.redirectFrom?.includes(currentPath));
 
   if (!post) {
     return {
@@ -103,7 +105,7 @@ export default async function PostPage({
   const currentPath = `/${basePath}/${slug}`;
   const post =
     resolvePostFromParam(rawSlug) ??
-    getAllPosts().find(p => p.redirectFrom?.includes(currentPath));
+    postsAcrossTrees().find(p => p.redirectFrom?.includes(currentPath));
 
   if (!post) {
     notFound();

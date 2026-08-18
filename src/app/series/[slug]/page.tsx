@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
-import { getSeriesUrl, withTrailingSlash } from '@/lib/urls';
+import { getSeriesUrl, localizeUrl, withTrailingSlash } from '@/lib/urls';
 import SeriesLandingBody from '@/components/page-bodies/SeriesLandingBody';
 import RedirectPage from '@/components/RedirectPage';
 import { seriesSlugParams, resolveSeriesParam } from '@/lib/route-aliases';
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
     return {
       title: resolution.data.title,
-      alternates: { canonical: withTrailingSlash(`${siteUrl}${getSeriesUrl(resolution.canonicalSlug)}`) },
+      alternates: { canonical: withTrailingSlash(`${siteUrl}${localizeUrl(getSeriesUrl(resolution.canonicalSlug), resolution.data.locale)}`) },
     };
   }
   const slug = resolution.slug;
@@ -70,7 +70,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
   const { slug: rawSlug } = await params;
   const resolution = resolveSeriesParam(rawSlug);
   if (resolution.kind === 'alias') {
-    return <RedirectPage to={getSeriesUrl(resolution.canonicalSlug)} />;
+    return <RedirectPage to={localizeUrl(getSeriesUrl(resolution.canonicalSlug), resolution.data.locale)} />;
   }
   return <SeriesLandingBody locale={DEFAULT_LOCALE} seriesSlug={resolution.slug} page={1} />;
 }
