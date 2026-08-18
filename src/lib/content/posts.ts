@@ -6,24 +6,29 @@ import { byDateDesc } from '../sort';
 import { getHeadings } from '../text-metrics';
 import type { PostData, Heading } from './types';
 import {
-  contentDirectory,
   pagesDirectory,
-  seriesDirectory,
+  contentRoot,
+  domainDir,
+  getActiveContentLocales,
+  assertKnownLocale,
   readUtf8File,
   parseSlugAndDate,
 } from './io';
-import { createMemo } from './cache';
+import { createKeyedMemo } from './cache';
 import { resolveSeriesIndexInfo, getSeriesContentEntries } from './series-metadata';
 import { parseMarkdownFile, parseRstPostEntries, type RstPostEntry } from './parse';
 
 /**
- * Post and page discovery. Posts live in content/posts/ (flat files or
- * folders) and inside series folders under content/series/; pages are
- * top-level files in content/ with optional locale variants.
+ * Post and page discovery. Each locale tree is a parallel content set: posts
+ * live in <tree>/posts/ (flat files or folders) and inside series folders
+ * under <tree>/series/; pages are top-level files in the tree root. The
+ * default locale's tree is the content/ root itself.
  */
 
-const allPostsUnfilteredMemo = createMemo<PostData[]>();
-const allPostsMemo = createMemo<PostData[]>();
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
+const allPostsUnfilteredMemo = createKeyedMemo<string, PostData[]>();
+const allPostsMemo = createKeyedMemo<string, PostData[]>();
 
 /**
  * Every post parsed from the content tree, including drafts, future-dated
@@ -32,8 +37,13 @@ const allPostsMemo = createMemo<PostData[]>();
  * build error) from "slug exists but is unpublished here" (a silent skip).
  * Routes and components must keep using getAllPosts().
  */
-export function getAllPostsIncludingUnpublished(): PostData[] {
-  return allPostsUnfilteredMemo.get(() => {
+export function getAllPostsIncludingUnpublished(locale: string = DEFAULT_LOCALE): PostData[] {
+  assertKnownLocale(locale);
+  return allPostsUnfilteredMemo.get(locale, () => {
+    // Chokepoint for the locale-tree validations: every build walks posts, so
+    // an invalid content/<locale>/ layout throws before anything renders.
+    if (!getActiveContentLocales().includes(locale)) return []; // configured but no tree on disk — sparse, not an error
+
     const allPostsData: PostData[] = [];
     const pendingRstPosts: RstPostEntry[] = [];
 
@@ -55,19 +65,20 @@ export function getAllPostsIncludingUnpublished(): PostData[] {
         if (isSeriesDir) {
           if (item.isDirectory()) {
             const seriesSlug = item.name;
-            const indexInfo = resolveSeriesIndexInfo(seriesSlug);
+            const indexInfo = resolveSeriesIndexInfo(seriesSlug, locale);
             if (!indexInfo) return;
 
-            getSeriesContentEntries(seriesSlug).forEach(entry => {
+            getSeriesContentEntries(seriesSlug, locale).forEach(entry => {
               if (indexInfo.format === 'rst') {
                 pendingRstPosts.push({
                   fullPath: entry.fullPath,
                   slug: entry.slug,
                   dateFromFileName: entry.dateFromFileName,
                   seriesSlug,
+                  locale,
                 });
               } else {
-                allPostsData.push(parseMarkdownFile(entry.fullPath, entry.slug, entry.dateFromFileName, seriesSlug));
+                allPostsData.push(parseMarkdownFile(entry.fullPath, entry.slug, entry.dateFromFileName, seriesSlug, locale));
               }
             });
             return;
@@ -78,7 +89,7 @@ export function getAllPostsIncludingUnpublished(): PostData[] {
         if (item.isFile()) {
           if (!item.name.endsWith('.mdx') && !item.name.endsWith('.md')) return;
           fullPath = path.join(dir, item.name);
-          allPostsData.push(parseMarkdownFile(fullPath, slug, dateFromFileName));
+          allPostsData.push(parseMarkdownFile(fullPath, slug, dateFromFileName, undefined, locale));
         } else if (item.isDirectory()) {
           const indexPathMdx = path.join(dir, item.name, 'index.mdx');
           const indexPathMd = path.join(dir, item.name, 'index.md');
@@ -86,13 +97,13 @@ export function getAllPostsIncludingUnpublished(): PostData[] {
           else if (fs.existsSync(indexPathMd)) fullPath = indexPathMd;
           else return;
 
-          allPostsData.push(parseMarkdownFile(fullPath, slug, dateFromFileName));
+          allPostsData.push(parseMarkdownFile(fullPath, slug, dateFromFileName, undefined, locale));
         }
       });
     };
 
-    processDirectory(contentDirectory);
-    processDirectory(seriesDirectory, true);
+    processDirectory(domainDir('posts', locale));
+    processDirectory(domainDir('series', locale), true);
 
     allPostsData.push(...parseRstPostEntries(pendingRstPosts));
 
@@ -100,9 +111,9 @@ export function getAllPostsIncludingUnpublished(): PostData[] {
   });
 }
 
-export function getAllPosts(): PostData[] {
-  return allPostsMemo.get(() => {
-    return getAllPostsIncludingUnpublished()
+export function getAllPosts(locale: string = DEFAULT_LOCALE): PostData[] {
+  return allPostsMemo.get(locale, () => {
+    return getAllPostsIncludingUnpublished(locale)
       .filter(post => {
         if (post.category === 'Page') return false;
 
@@ -126,27 +137,55 @@ export function getAllPosts(): PostData[] {
  * Use this instead of getAllPosts() on any listing/pagination page.
  * Individual post routes and series pages still use getAllPosts() directly.
  */
-export function getListingPosts(): PostData[] {
+export function getListingPosts(locale: string = DEFAULT_LOCALE): PostData[] {
   const excluded = new Set(siteConfig.posts?.excludeFromListing ?? []);
-  if (excluded.size === 0) return getAllPosts();
-  return getAllPosts().filter(p => !p.series || !excluded.has(p.series));
+  if (excluded.size === 0) return getAllPosts(locale);
+  return getAllPosts(locale).filter(p => !p.series || !excluded.has(p.series));
 }
 
-export function getPostBySlug(slug: string): PostData | null {
-  return getAllPosts().find(post => post.slug === slug) ?? null;
+export function getPostBySlug(slug: string, locale: string = DEFAULT_LOCALE): PostData | null {
+  return getAllPosts(locale).find(post => post.slug === slug) ?? null;
 }
 
-export function getPostsByTag(tag: string): PostData[] {
-  const allPosts = getAllPosts();
+export function getPostsByTag(tag: string, locale: string = DEFAULT_LOCALE): PostData[] {
+  const allPosts = getAllPosts(locale);
   return allPosts.filter((post) =>
     post.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
   );
 }
 
-const featuredPostsMemo = createMemo<PostData[]>();
+const featuredPostsMemo = createKeyedMemo<string, PostData[]>();
 
-export function getFeaturedPosts(): PostData[] {
-  return featuredPostsMemo.get(() => getAllPosts().filter(post => post.featured));
+export function getFeaturedPosts(locale: string = DEFAULT_LOCALE): PostData[] {
+  return featuredPostsMemo.get(locale, () => getAllPosts(locale).filter(post => post.featured));
+}
+
+// ─── twin lookups across locale trees ────────────────────────────────────────
+
+/**
+ * Locales (including the post's own) whose tree contains a doc with the same
+ * treePath — the hreflang/LanguageSwitch data. A zh-original post with no
+ * default-tree twin yields just ['zh'].
+ */
+export function getPostContentLocales(post: Pick<PostData, 'treePath' | 'locale'>): string[] {
+  return getActiveContentLocales().filter(
+    locale => locale === post.locale || getAllPosts(locale).some(p => p.treePath === post.treePath)
+  );
+}
+
+/** The same post in another locale tree (matched by treePath), or null. */
+export function getTwinPost(post: Pick<PostData, 'treePath'>, locale: string): PostData | null {
+  return getAllPosts(locale).find(p => p.treePath === post.treePath) ?? null;
+}
+
+export function getPageContentLocales(page: Pick<PostData, 'treePath' | 'locale'>): string[] {
+  return getActiveContentLocales().filter(
+    locale => locale === page.locale || getAllPages(locale).some(p => p.treePath === page.treePath)
+  );
+}
+
+export function getTwinPage(page: Pick<PostData, 'treePath'>, locale: string): PostData | null {
+  return getAllPages(locale).find(p => p.treePath === page.treePath) ?? null;
 }
 
 /**
@@ -197,20 +236,26 @@ function attachContentLocales(page: PostData, slug: string): PostData {
  * check — malformed frontmatter, unreadable file — propagates and fails the
  * build (strict-build invariant); a broken page must not silently 404.
  */
-export function getPageBySlug(slug: string): PostData | null {
-  let fullPath = path.join(/* turbopackIgnore: true */ pagesDirectory, `${slug}.mdx`);
+export function getPageBySlug(slug: string, locale: string = DEFAULT_LOCALE): PostData | null {
+  assertKnownLocale(locale);
+  const treeRoot = contentRoot(locale);
+  let fullPath = path.join(/* turbopackIgnore: true */ treeRoot, `${slug}.mdx`);
   if (!fs.existsSync(/* turbopackIgnore: true */ fullPath)) {
-    fullPath = path.join(/* turbopackIgnore: true */ pagesDirectory, `${slug}.md`);
+    fullPath = path.join(/* turbopackIgnore: true */ treeRoot, `${slug}.md`);
   }
   if (!fs.existsSync(/* turbopackIgnore: true */ fullPath)) return null;
-  return attachContentLocales(parseMarkdownFile(fullPath, slug), slug);
+  const page = parseMarkdownFile(fullPath, slug, undefined, undefined, locale);
+  return locale === DEFAULT_LOCALE ? attachContentLocales(page, slug) : page;
 }
 
-const allPagesMemo = createMemo<PostData[]>();
+const allPagesMemo = createKeyedMemo<string, PostData[]>();
 
-export function getAllPages(): PostData[] {
-  return allPagesMemo.get(() => {
-    const items = fs.readdirSync(pagesDirectory, { withFileTypes: true });
+export function getAllPages(locale: string = DEFAULT_LOCALE): PostData[] {
+  assertKnownLocale(locale);
+  return allPagesMemo.get(locale, () => {
+    if (!getActiveContentLocales().includes(locale)) return [];
+    const treeRoot = contentRoot(locale);
+    const items = fs.readdirSync(treeRoot, { withFileTypes: true });
     return items
       .filter(item => {
         if (!item.isFile()) return false;
@@ -225,8 +270,9 @@ export function getAllPages(): PostData[] {
       })
       .map(item => {
         const slug = item.name.replace(/\.mdx?$/, '');
-        const fullPath = path.join(pagesDirectory, item.name);
-        return attachContentLocales(parseMarkdownFile(fullPath, slug), slug);
+        const fullPath = path.join(treeRoot, item.name);
+        const page = parseMarkdownFile(fullPath, slug, undefined, undefined, locale);
+        return locale === DEFAULT_LOCALE ? attachContentLocales(page, slug) : page;
       });
   });
 }

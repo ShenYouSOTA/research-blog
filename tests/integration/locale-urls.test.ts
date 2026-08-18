@@ -126,7 +126,7 @@ describe('locale-code collision throws (strict build)', () => {
 
   test('config: posts.basePath equal to a locale code is rejected', () => {
     const bad = { ...siteConfig, posts: { ...siteConfig.posts, basePath: 'zh' } };
-    expect(() => validateSiteConfig(bad)).toThrow(/posts\.basePath.*locale/s);
+    expect(() => validateSiteConfig(bad)).toThrow(/posts\.basePath.*locale/);
   });
 
   test('config: series.customPaths value equal to a locale code is rejected', () => {
@@ -134,7 +134,7 @@ describe('locale-code collision throws (strict build)', () => {
       ...siteConfig,
       series: { ...siteConfig.series, customPaths: { ...siteConfig.series.customPaths, foo: 'zh' } },
     };
-    expect(() => validateSiteConfig(bad)).toThrow(/customPaths.*locale/s);
+    expect(() => validateSiteConfig(bad)).toThrow(/customPaths.*locale/);
   });
 
   test('config: defaultLocale must be listed in locales', () => {

@@ -115,13 +115,19 @@ export function withTrailingSlash(url: string): string {
   return url.endsWith('/') ? url : `${url}/`;
 }
 
-export function getPostUrl(post: { slug: string; series?: string }): string {
-  if (post.series) {
-    const customPath = getSeriesCustomPaths()[post.series];
-    if (customPath) return `/${customPath}/${post.slug}`;
-    if (getSeriesAutoPaths()) return `/${post.series}/${post.slug}`;
+export function getPostUrl(post: { slug: string; series?: string; locale?: string }): string {
+  let url: string;
+  if (post.series && getSeriesCustomPaths()[post.series]) {
+    url = `/${getSeriesCustomPaths()[post.series]}/${post.slug}`;
+  } else if (post.series && getSeriesAutoPaths()) {
+    url = `/${post.series}/${post.slug}`;
+  } else {
+    url = `/${getPostsBasePath()}/${post.slug}`;
   }
-  return `/${getPostsBasePath()}/${post.slug}`;
+  // Entity-carried locale: posts from a non-default tree live under /<locale>/…
+  // Default-tree posts (locale absent or = default) keep byte-identical URLs,
+  // which is what keeps feed GUIDs and graph node ids stable.
+  return post.locale ? localizeUrl(url, post.locale) : url;
 }
 
 /** Returns the posts listing URL (page 1). */
