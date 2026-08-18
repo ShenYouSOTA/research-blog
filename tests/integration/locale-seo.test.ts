@@ -20,11 +20,15 @@ const twinLanguages = {
 };
 
 describe('contentSeoUrls', () => {
-  test('twin → unprefixed canonical + full languages set, from either side', () => {
+  test('twins are SELF-canonical on each side, sharing one languages set', () => {
+    // Cross-language canonicals would tell Google to drop the translation
+    // from the index (PR #125 review finding 5) — each side canonicalizes
+    // to itself; hreflang + x-default connect the pair.
     const fromZh = contentSeoUrls('/zh/posts/foo', ['en', 'zh']);
     const fromEn = contentSeoUrls('/posts/foo', ['en', 'zh']);
+    expect(fromZh.canonicalUrl).toBe(`${base}/zh/posts/foo/`);
+    expect(fromEn.canonicalUrl).toBe(`${base}/posts/foo/`);
     for (const seo of [fromZh, fromEn]) {
-      expect(seo.canonicalUrl).toBe(`${base}/posts/foo/`);
       expect(seo.languageAlternates).toEqual({
         en: `${base}/posts/foo/`,
         zh: `${base}/zh/posts/foo/`,
@@ -55,11 +59,11 @@ describe('detail-route metadata: canonical split + hreflang', () => {
     expect(md.alternates?.languages).toEqual(twinLanguages);
   });
 
-  test('[...rest] zh twin metadata returns the SAME unprefixed canonical', async () => {
+  test('[...rest] zh twin metadata is self-canonical with the shared languages set', async () => {
     const md = await deepMetadata({
       params: Promise.resolve({ slug: 'zh', postSlug: 'posts', rest: ['i18n-routing-considerations'] }),
     });
-    expect(md.alternates?.canonical).toBe(twinCanonical);
+    expect(md.alternates?.canonical).toBe(`${base}/zh/posts/i18n-routing-considerations/`);
     expect(md.alternates?.languages).toEqual(twinLanguages);
   });
 
@@ -71,13 +75,14 @@ describe('detail-route metadata: canonical split + hreflang', () => {
     expect(md.alternates?.languages).toBeUndefined();
   });
 
-  test('twin static page: both sides canonicalize to the unprefixed URL', async () => {
+  test('twin static page: each side self-canonical, same languages set', async () => {
     const enSide = await topLevelMetadata({ params: Promise.resolve({ slug: 'about' }) });
     const zhSide = await secondLevelMetadata({
       params: Promise.resolve({ slug: 'zh', postSlug: 'about' }),
     });
+    expect(enSide.alternates?.canonical).toBe(`${base}/about/`);
+    expect(zhSide.alternates?.canonical).toBe(`${base}/zh/about/`);
     for (const md of [enSide, zhSide]) {
-      expect(md.alternates?.canonical).toBe(`${base}/about/`);
       expect(md.alternates?.languages).toEqual({
         en: `${base}/about/`,
         zh: `${base}/zh/about/`,

@@ -106,10 +106,11 @@ and keeps its unprefixed URLs.
   are byte-identical to a pre-i18n site.
 - **Twins**: files at the same tree-relative path (`treePath`, extension-
   stripped, `/index`–`/README` collapsed) are translations of each other.
-  Twins share reciprocal `hreflang` and canonicalize to the **unprefixed**
-  URL; a locale-tree *original* (no default-tree twin) is self-canonical at
-  its `/zh/…` URL. `contentSeoUrls()` in `src/lib/locale-routes.ts` is the
-  single owner of that split.
+  Every language version is **self-canonical** (a cross-language canonical
+  would tell Google to drop the translation from the index); twins are
+  connected by reciprocal `hreflang` with `x-default` = the unprefixed URL.
+  `contentSeoUrls()` in `src/lib/locale-routes.ts` is the single owner of
+  those rules.
 - **Routing**: a sibling `[locale]` segment cannot coexist with `[slug]`
   (Next.js E337), so locale paths ride the existing dynamic tree: `/zh/` →
   `[slug]`, `/zh/<x>/` → `[slug]/[postSlug]`, deeper →

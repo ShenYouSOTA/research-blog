@@ -405,10 +405,11 @@ export function getTwinnedPathManifest(): Record<string, string[]> {
  * Canonical + hreflang set for a content entity. `entityUrl` is its own
  * (possibly locale-prefixed) URL; `locales` from get*ContentLocales().
  *
- * Twins canonicalize to the UNPREFIXED URL on both sides, with reciprocal
- * alternates.languages and x-default = unprefixed. Single-locale entities
- * (default-tree-only posts AND locale-tree originals) are self-canonical
- * with no languages block.
+ * Every language version is SELF-canonical — Google treats rel=canonical as
+ * "index that page instead", so a translation pointing at its counterpart
+ * would be dropped from the index entirely. Twins are connected by
+ * reciprocal alternates.languages with x-default = the unprefixed URL;
+ * single-locale entities carry no languages block.
  */
 export function contentSeoUrls(entityUrl: string, locales: string[]): {
   canonicalUrl: string;
@@ -416,8 +417,7 @@ export function contentSeoUrls(entityUrl: string, locales: string[]): {
 } {
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
   const { path: unprefixed } = splitLocaleFromPath(entityUrl);
-  const canonicalPath = locales.includes(DEFAULT_LOCALE) ? unprefixed : entityUrl;
-  const canonicalUrl = withTrailingSlash(`${siteUrl}${canonicalPath}`);
+  const canonicalUrl = withTrailingSlash(`${siteUrl}${entityUrl}`);
   if (locales.length < 2) return { canonicalUrl };
   const languageAlternates: Record<string, string> = {};
   for (const locale of locales) {
