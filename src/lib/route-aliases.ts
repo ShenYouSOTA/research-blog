@@ -10,7 +10,8 @@ import {
   validateSeriesAutoPaths,
   getPostUrl,
   getSeriesListUrl,
-  RESERVED_ROUTE_SEGMENTS,
+  getReservedRouteSegments,
+  getRouteLocales,
 } from './urls';
 import { safeDecodeParam, resolveFromParam, withDevEncodedVariants } from './route-params';
 
@@ -145,6 +146,19 @@ export function collectSeriesPageAliases(
 /** `[slug]`: pages + custom basePath + series custom/auto paths + 1-segment redirectFrom. */
 export function topLevelSlugParams(): { slug: string }[] {
   const pages = getAllPages();
+
+  // Locale codes are reserved URL prefixes (/zh/… is the zh content tree) —
+  // a static page claiming one would silently shadow that entire surface.
+  const routeLocales = new Set(getRouteLocales());
+  for (const page of pages) {
+    if (routeLocales.has(page.slug)) {
+      throw new Error(
+        `[amytis] Static page "${page.slug}" conflicts with the configured locale prefix "/${page.slug}". ` +
+        `Locale codes are reserved URL segments — rename the page.`
+      );
+    }
+  }
+
   const params = pages.map((page) => ({ slug: page.slug }));
 
   // Add custom posts basePath listing (e.g. /articles)
@@ -177,7 +191,7 @@ export function topLevelSlugParams(): { slug: string }[] {
     basePath,
     ...Object.values(customPaths),
     ...autoPathSlugs,
-    ...RESERVED_ROUTE_SEGMENTS,
+    ...getReservedRouteSegments(),
   ]);
   for (const alias of collectSingleSegmentAliases(getAllPosts(), reservedSlugs)) {
     params.push({ slug: alias });
