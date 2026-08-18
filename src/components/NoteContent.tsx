@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useLanguage } from '@/components/LanguageProvider';
 import Link from 'next/link';
-import { getNoteUrl } from '@/lib/urls';
+import { getNoteUrl, localizeUrl } from '@/lib/urls';
 import Tag from '@/components/Tag';
 import Pagination from '@/components/Pagination';
 import { metaLabel } from '@/lib/ui-classes';
@@ -27,7 +27,7 @@ interface NoteContentProps {
 }
 
 export default function NoteContent({ notes, tags, pagination }: NoteContentProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const filteredNotes = useMemo(() => {
@@ -93,7 +93,7 @@ export default function NoteContent({ notes, tags, pagination }: NoteContentProp
                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-accent" />
                 <time className="text-xs font-mono text-accent">{note.date}</time>
                 <h3 className="mt-1 mb-2 font-serif text-xl font-bold text-heading">
-                  <Link href={getNoteUrl(note.slug)} className="no-underline hover:text-accent transition-colors">
+                  <Link href={localizeUrl(getNoteUrl(note.slug), language)} className="no-underline hover:text-accent transition-colors">
                     {note.title}
                   </Link>
                 </h3>

@@ -35,7 +35,7 @@ export default function BookMobileNav({ bookSlug, bookTitle, toc, chapters, curr
     ) : (
       <Link
         key={key}
-        href={getBookChapterUrl(bookSlug, ch.id)}
+        href={localizeUrl(getBookChapterUrl(bookSlug, ch.id), language)}
         className={`block py-1.5 px-2 rounded-lg text-sm no-underline hover:bg-surface-soft transition-colors ${
           isPast ? 'text-foreground/70 hover:text-foreground' : 'text-muted hover:text-foreground'
         }`}
@@ -89,8 +89,8 @@ export default function BookMobileNav({ bookSlug, bookTitle, toc, chapters, curr
       {/* Prev / Next */}
       <div className="mb-3">
         <PrevNextNav
-          prev={prevChapter ? { href: getBookChapterUrl(bookSlug, prevChapter.id), title: prevChapter.title } : null}
-          next={nextChapter ? { href: getBookChapterUrl(bookSlug, nextChapter.id), title: nextChapter.title } : null}
+          prev={prevChapter ? { href: localizeUrl(getBookChapterUrl(bookSlug, prevChapter.id), language), title: prevChapter.title } : null}
+          next={nextChapter ? { href: localizeUrl(getBookChapterUrl(bookSlug, nextChapter.id), language), title: nextChapter.title } : null}
         />
       </div>
 
