@@ -13,6 +13,7 @@ import NavDropdown, { type NavMenuItem } from './NavDropdown';
 import NavAccordion from './NavAccordion';
 import { useLanguage } from '@/components/LanguageProvider';
 import { resolveLocaleValue } from '@/lib/i18n';
+import { localizeUrl, splitLocaleFromPath, withTrailingSlash } from '@/lib/urls';
 import { TranslationKey } from '@/i18n/translations';
 
 interface NavItem {
@@ -26,7 +27,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps) {
-  const { t, tWith, language } = useLanguage();
+  const { t, tWith, language, twinnedPaths } = useLanguage();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -44,11 +45,28 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
     return translated !== key ? translated : name;
   };
 
+  // Active-state compares the UNPREFIXED form so /zh/posts/… activates "Posts".
+  const { path: unprefixedPath } = splitLocaleFromPath(pathname ?? '/');
+
   function isActive(url: string): boolean {
     if (!url) return false;
-    if (url === '/') return pathname === '/';
+    if (url === '/') return unprefixedPath === '/';
     // Segment-aware prefix match: '/posts' must not claim '/posts-archive'.
-    return pathname === url || pathname.startsWith(url + '/');
+    return unprefixedPath === url || unprefixedPath.startsWith(url + '/');
+  }
+
+  /**
+   * Locale-sticky navigation: on a locale-prefixed page, section links stay in
+   * that locale when the section exists there (per the twin manifest);
+   * otherwise they fall back to the unprefixed surface. Dropdown entries link
+   * default-tree entities and stay unprefixed on purpose.
+   */
+  function navHref(url: string): string {
+    if (language === siteConfig.i18n.defaultLocale) return url;
+    if (url === '/') {
+      return (twinnedPaths[language]?.length ?? 0) > 0 ? localizeUrl('/', language) : url;
+    }
+    return (twinnedPaths[language] ?? []).includes(withTrailingSlash(url)) ? localizeUrl(url, language) : url;
   }
 
   // Scroll-aware transparency
@@ -110,7 +128,7 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
     }`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link
-          href="/"
+          href={navHref('/')}
           onClick={pathname === '/' ? (e) => { if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); } } : undefined}
           className="flex items-center gap-3 min-w-0 text-xl font-serif font-bold text-heading hover:text-accent transition-colors duration-200"
         >
@@ -155,10 +173,10 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
                   <NavDropdown
                     key={item.url}
                     label={label}
-                    href={item.url}
+                    href={navHref(item.url)}
                     active={active}
                     items={booksItems}
-                    footer={{ href: '/books', label: `${t('all_books')} →` }}
+                    footer={{ href: navHref('/books'), label: `${t('all_books')} →` }}
                     panelClassName="min-w-[200px] max-h-[70vh] overflow-y-auto"
                     {...submenuLabels(label)}
                   />
@@ -170,10 +188,10 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
                   <NavDropdown
                     key={item.url}
                     label={label}
-                    href={item.url}
+                    href={navHref(item.url)}
                     active={active}
                     items={seriesItems}
-                    footer={{ href: '/series', label: `${t('all_series')} →` }}
+                    footer={{ href: navHref('/series'), label: `${t('all_series')} →` }}
                     panelClassName="min-w-[200px] max-h-[70vh] overflow-y-auto"
                     {...submenuLabels(label)}
                   />
@@ -199,7 +217,7 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
               return (
                 <Component
                   key={item.url}
-                  href={item.url}
+                  href={navHref(item.url)}
                   {...props}
                   className={`text-sm font-sans font-medium no-underline transition-colors duration-200 flex items-center gap-1 ${
                     active ? 'text-accent' : 'text-foreground/80 hover:text-heading'
@@ -275,10 +293,10 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
                     <NavAccordion
                       key={item.url}
                       label={label}
-                      href={item.url}
+                      href={navHref(item.url)}
                       active={active}
                       items={seriesItems}
-                      footer={{ href: '/series', label: `${t('all_series')} →` }}
+                      footer={{ href: navHref('/series'), label: `${t('all_series')} →` }}
                       isOpen={openDropdown === '/series'}
                       onToggle={() => setOpenDropdown(openDropdown === '/series' ? null : '/series')}
                       onNavigate={closeMenu}
@@ -292,10 +310,10 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
                     <NavAccordion
                       key={item.url}
                       label={label}
-                      href={item.url}
+                      href={navHref(item.url)}
                       active={active}
                       items={booksItems}
-                      footer={{ href: '/books', label: `${t('all_books')} →` }}
+                      footer={{ href: navHref('/books'), label: `${t('all_books')} →` }}
                       isOpen={openDropdown === '/books'}
                       onToggle={() => setOpenDropdown(openDropdown === '/books' ? null : '/books')}
                       onNavigate={closeMenu}
@@ -328,7 +346,7 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
                 return (
                   <Component
                     key={item.url}
-                    href={item.url}
+                    href={navHref(item.url)}
                     {...props}
                     className={`flex items-center gap-2 px-3 py-3 text-base font-sans font-medium rounded-lg no-underline transition-colors ${
                       active ? 'text-accent' : 'text-foreground/80 hover:text-accent hover:bg-surface-soft'

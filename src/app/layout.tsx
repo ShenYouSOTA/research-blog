@@ -11,6 +11,7 @@ import BrowserDetectionBanner from "@/components/BrowserDetectionBanner";
 import { siteConfig } from "@/lib/config-schema";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { getTwinnedPathManifest } from "@/lib/locale-routes";
 import { getAllSeries, getSeriesData } from '@/lib/content/series';
 import { getAllBooks } from '@/lib/content/books';
 import { resolveLocaleValue } from "@/lib/i18n";
@@ -152,7 +153,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <LanguageProvider>
+          <LanguageProvider twinnedPaths={getTwinnedPathManifest()}>
             <div className="selection:bg-accent/20 selection:text-accent dark:selection:bg-accent/30 dark:selection:text-accent min-h-screen flex flex-col">
               <Navbar seriesList={seriesList} booksList={booksList} />
               <main id="main-content" className="pt-16 flex-grow">

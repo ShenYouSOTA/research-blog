@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Heading, CollectionContext, PostNavItem } from '@/lib/content/types';
-import { getPostUrl, getPostUrlInCollection } from '@/lib/urls';
+import { getPostUrl, getPostUrlInCollection, localizeUrl } from '@/lib/urls';
 import { useLanguage } from './LanguageProvider';
 import { useSidebarAutoScroll } from '@/hooks/useSidebarAutoScroll';
 import { padNumber } from '@/lib/format-utils';
@@ -38,7 +38,7 @@ function getVisibleIndices(total: number, current: number): (number | 'ellipsis'
 }
 
 export default function PostSidebar({ seriesSlug, seriesTitle, posts, collectionContexts, currentSlug, headings, shareUrl, shareTitle }: PostSidebarProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const searchParams = useSearchParams();
   const collectionParam = searchParams.get('collection');
   const activeCollection = collectionParam
@@ -92,7 +92,7 @@ export default function PostSidebar({ seriesSlug, seriesTitle, posts, collection
               </span>
             </div>
             <div className="flex items-start justify-between gap-2">
-              <Link href={`/series/${effectiveSlug}`} className="group block no-underline flex-1 min-w-0">
+              <Link href={localizeUrl(`/series/${effectiveSlug}`, language)} className="group block no-underline flex-1 min-w-0">
                 <h3 className="font-serif font-bold text-heading text-base leading-snug group-hover:text-accent transition-colors">
                   {effectiveTitle}
                 </h3>
@@ -166,7 +166,7 @@ export default function PostSidebar({ seriesSlug, seriesTitle, posts, collection
               </nav>
 
               <Link
-                href={`/series/${effectiveSlug}`}
+                href={localizeUrl(`/series/${effectiveSlug}`, language)}
                 className="text-xs font-sans text-muted hover:text-accent transition-colors no-underline flex items-center gap-1"
               >
                 {isCollectionContext ? t('view_full_collection') : t('view_full_series')}

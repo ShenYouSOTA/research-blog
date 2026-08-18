@@ -2,19 +2,108 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
 import { resolveImageUrl } from '@/lib/json-ld';
-import { getPostUrl, withTrailingSlash } from '@/lib/urls';
-import { buildArticleMetadata } from '@/lib/metadata';
+import { getPostUrl, getPostsBasePath, isNonDefaultLocale, localizeUrl, withTrailingSlash } from '@/lib/urls';
+import { buildArticleMetadata, createListingMetadata } from '@/lib/metadata';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import RedirectPage from '@/components/RedirectPage';
 import RenderPostPage from '@/components/RenderPostPage';
+import PostLayout from '@/layouts/PostLayout';
+import SimpleLayout from '@/layouts/SimpleLayout';
+import PostsListingBody from '@/components/page-bodies/PostsListingBody';
+import SeriesPrefixListingBody from '@/components/page-bodies/SeriesPrefixListingBody';
+import SeriesIndexBody from '@/components/page-bodies/SeriesIndexBody';
+import BooksIndexBody from '@/components/page-bodies/BooksIndexBody';
+import NotesIndexBody from '@/components/page-bodies/NotesIndexBody';
 import { prefixedPostParams, resolvePrefixedPost } from '@/lib/route-aliases';
+import { localeSecondLevelParams, resolveLocalizedPath, type LocalizedResolution } from '@/lib/locale-routes';
+import { safeDecodeParam } from '@/lib/route-params';
+import { getAllSeries, getSeriesData } from '@/lib/content/series';
+import { getAllBooks } from '@/lib/content/books';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
 export async function generateStaticParams() {
-  return prefixedPostParams();
+  return [...prefixedPostParams(), ...localeSecondLevelParams()];
 }
 
 export const dynamicParams = false;
+
+/** Metadata for the /<locale>/<x> surface — mirrors each unprefixed page kind. */
+function localizedMetadata(locale: string, resolution: LocalizedResolution): Metadata {
+  const { t } = getTranslator(locale);
+  switch (resolution?.kind) {
+    case 'page':
+      return {
+        title: `${resolution.page.title} | ${resolveLocaleValue(siteConfig.title, locale)}`,
+        description: resolution.page.excerpt,
+      };
+    case 'postsListing':
+      return {
+        title: `${t('posts')} | ${resolveLocaleValue(siteConfig.title, locale)}`,
+        description: t('posts_description'),
+      };
+    case 'seriesIndexListing':
+      return createListingMetadata({
+        locale, titleKey: 'series', descriptionKey: 'series_subtitle',
+        count: Object.keys(getAllSeries(locale)).length,
+      });
+    case 'booksListing':
+      return createListingMetadata({
+        locale, titleKey: 'books', descriptionKey: 'books_subtitle',
+        descriptionOneKey: 'books_subtitle_one', count: getAllBooks(locale).length,
+      });
+    case 'notesListing':
+      return createListingMetadata({ locale, titleKey: 'notes', description: 'Knowledge base notes.' });
+    case 'seriesPrefixListing': {
+      const seriesData = getSeriesData(resolution.seriesSlug, locale);
+      if (!seriesData) return { title: 'Page Not Found' };
+      return {
+        title: `${seriesData.title} - ${t('series')} | ${resolveLocaleValue(siteConfig.title, locale)}`,
+        description: seriesData.excerpt,
+      };
+    }
+    default:
+      return { title: 'Page Not Found' };
+  }
+}
+
+/** Body for the /<locale>/<x> surface. */
+function LocalizedSecondLevel({ locale, resolution }: { locale: string; resolution: LocalizedResolution }) {
+  switch (resolution?.kind) {
+    case 'page': {
+      const page = resolution.page;
+      if ((page.layout || 'simple') === 'post') {
+        return <PostLayout post={page} locale={locale} commentCategory="staticPages" />;
+      }
+      return <SimpleLayout post={page} />;
+    }
+    case 'postsListing':
+      return (
+        <PostsListingBody
+          locale={locale}
+          page={resolution.page}
+          paginationBasePath={localizeUrl(`/${getPostsBasePath()}`, locale)}
+        />
+      );
+    case 'seriesIndexListing':
+      return <SeriesIndexBody locale={locale} />;
+    case 'booksListing':
+      return <BooksIndexBody locale={locale} />;
+    case 'notesListing':
+      return <NotesIndexBody locale={locale} page={resolution.page} />;
+    case 'seriesPrefixListing':
+      return (
+        <SeriesPrefixListingBody
+          locale={locale}
+          seriesSlug={resolution.seriesSlug}
+          prefix={resolution.prefix}
+          page={resolution.page}
+        />
+      );
+    default:
+      notFound();
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -22,6 +111,12 @@ export async function generateMetadata({
   params: Promise<{ slug: string; postSlug: string }>;
 }): Promise<Metadata> {
   const { slug: prefix, postSlug: rawPostSlug } = await params;
+
+  const localeSlug = safeDecodeParam(prefix);
+  if (isNonDefaultLocale(localeSlug)) {
+    return localizedMetadata(localeSlug, resolveLocalizedPath(localeSlug, [rawPostSlug]));
+  }
+
   const resolution = resolvePrefixedPost(prefix, rawPostSlug);
 
   if (!resolution) {
@@ -57,6 +152,14 @@ export default async function PrefixPostPage({
   params: Promise<{ slug: string; postSlug: string }>;
 }) {
   const { slug: prefix, postSlug: rawPostSlug } = await params;
+
+  const localeSlug = safeDecodeParam(prefix);
+  if (isNonDefaultLocale(localeSlug)) {
+    const localized = resolveLocalizedPath(localeSlug, [rawPostSlug]);
+    if (!localized) notFound();
+    return <LocalizedSecondLevel locale={localeSlug} resolution={localized} />;
+  }
+
   const resolution = resolvePrefixedPost(prefix, rawPostSlug);
   if (!resolution) {
     notFound();

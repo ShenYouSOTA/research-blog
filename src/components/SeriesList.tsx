@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { CollectionContext, PostNavItem } from '@/lib/content/types';
 import { useLanguage } from './LanguageProvider';
-import { getPostUrl, getPostUrlInCollection } from '@/lib/urls';
+import { getPostUrl, getPostUrlInCollection, localizeUrl } from '@/lib/urls';
 import PrevNextNav from './PrevNextNav';
 import MetaLabel from './ui/MetaLabel';
 import { padNumber } from '@/lib/format-utils';
@@ -19,7 +19,7 @@ interface SeriesListProps {
 }
 
 export default function SeriesList({ seriesSlug, seriesTitle, posts, collectionContexts, currentSlug }: SeriesListProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const searchParams = useSearchParams();
   const collectionParam = searchParams.get('collection');
   const activeCollection = collectionParam
@@ -47,7 +47,7 @@ export default function SeriesList({ seriesSlug, seriesTitle, posts, collectionC
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Link
-          href={`/series/${effectiveSlug}`}
+          href={localizeUrl(`/series/${effectiveSlug}`, language)}
           className="group flex items-center gap-2 no-underline"
         >
           <MetaLabel tone="accent">
@@ -145,7 +145,7 @@ export default function SeriesList({ seriesSlug, seriesTitle, posts, collectionC
       {/* Footer */}
       <div className="mt-4 pt-3 border-t border-line">
         <Link
-          href={`/series/${effectiveSlug}`}
+          href={localizeUrl(`/series/${effectiveSlug}`, language)}
           className="text-xs font-sans text-muted hover:text-accent transition-colors no-underline flex items-center gap-1"
         >
           {isCollectionContext ? t('view_full_collection') : t('view_full_series')}

@@ -8,24 +8,41 @@ import { Metadata } from 'next';
 import { siteConfig } from '../../../site.config';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import { topLevelSlugParams, resolveTopLevelSlug } from '@/lib/route-aliases';
+import { localeHomeParams, resolveLocalizedPath } from '@/lib/locale-routes';
+import { isNonDefaultLocale } from '@/lib/urls';
+import { safeDecodeParam } from '@/lib/route-params';
 import RedirectPage from '@/components/RedirectPage';
+import LocaleHomeBody from '@/components/page-bodies/LocaleHomeBody';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 const { t } = getTranslator(DEFAULT_LOCALE);
 
 /**
  * Generates the static paths for all top-level pages at build time,
- * plus any custom URL prefixes configured for posts or series.
+ * plus any custom URL prefixes configured for posts or series, plus the
+ * locale roots (/zh) of locale trees with content.
  * Alias collisions throw inside topLevelSlugParams (strict build).
  */
 export async function generateStaticParams() {
-  return topLevelSlugParams();
+  return [...topLevelSlugParams(), ...localeHomeParams()];
 }
 
 export const dynamicParams = false;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug: rawSlug } = await params;
+
+  // Locale root (/zh) — locale codes are reserved segments, so this cannot
+  // shadow a real page or alias.
+  const localeSlug = safeDecodeParam(rawSlug);
+  if (isNonDefaultLocale(localeSlug)) {
+    if (!resolveLocalizedPath(localeSlug, [])) return { title: 'Page Not Found' };
+    return {
+      title: resolveLocaleValue(siteConfig.title, localeSlug),
+      description: resolveLocaleValue(siteConfig.description, localeSlug),
+    };
+  }
+
   const resolution = resolveTopLevelSlug(rawSlug);
 
   switch (resolution?.kind) {
@@ -62,6 +79,13 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug: rawSlug } = await params;
+
+  const localeSlug = safeDecodeParam(rawSlug);
+  if (isNonDefaultLocale(localeSlug)) {
+    if (!resolveLocalizedPath(localeSlug, [])) notFound();
+    return <LocaleHomeBody locale={localeSlug} />;
+  }
+
   const resolution = resolveTopLevelSlug(rawSlug);
   if (!resolution) notFound();
 

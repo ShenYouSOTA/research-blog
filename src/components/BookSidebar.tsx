@@ -8,7 +8,7 @@ import { useLanguage } from './LanguageProvider';
 import { useSidebarAutoScroll } from '@/hooks/useSidebarAutoScroll';
 import InlineBookToc from './InlineBookToc';
 import MetaLabel from './ui/MetaLabel';
-import { getBookChapterUrl, getBookUrl } from '@/lib/urls';
+import { getBookChapterUrl, getBookUrl, localizeUrl } from '@/lib/urls';
 
 interface BookSidebarProps {
   bookSlug: string;
@@ -61,7 +61,7 @@ function findAncestorSectionKeys(toc: BookTocItem[], chapterId: string): string[
 }
 
 export default function BookSidebar({ bookSlug, bookTitle, toc, chapters, currentChapter, headings = [], mode = 'page' }: BookSidebarProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const currentIndex = chapters.findIndex(ch => ch.id === currentChapter);
   const currentItemRef = useRef<HTMLLIElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -180,7 +180,7 @@ export default function BookSidebar({ bookSlug, bookTitle, toc, chapters, curren
     return (
       <li key={key ?? ch.id} ref={isCurrent ? currentItemRef : undefined}>
         <Link
-          href={getBookChapterUrl(bookSlug, ch.id)}
+          href={localizeUrl(getBookChapterUrl(bookSlug, ch.id), language)}
           className={`block py-2 px-3 rounded-lg text-sm no-underline transition-all duration-200 ${
             isCurrent
               ? 'bg-accent/10 text-accent font-semibold border-l-2 border-accent'
@@ -261,7 +261,7 @@ export default function BookSidebar({ bookSlug, bookTitle, toc, chapters, curren
             {currentIndex + 1}/{chapters.length}
           </span>
         </div>
-        <Link href={getBookUrl(bookSlug)} className="group block no-underline">
+        <Link href={localizeUrl(getBookUrl(bookSlug), language)} className="group block no-underline">
           <h3 className="font-serif font-bold text-heading text-lg leading-snug group-hover:text-accent transition-colors">
             {bookTitle}
           </h3>
@@ -311,7 +311,7 @@ export default function BookSidebar({ bookSlug, bookTitle, toc, chapters, curren
       {/* Footer */}
       <div className="mt-6 pt-4 border-t border-line">
         <Link
-          href="/books"
+          href={localizeUrl('/books', language)}
           className="text-xs font-sans text-muted hover:text-accent transition-colors no-underline flex items-center gap-1"
         >
           {t('all_books')}
