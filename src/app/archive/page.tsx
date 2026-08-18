@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getSeriesData } from '@/lib/content/series';
-import { getAllPosts } from '@/lib/content/posts';
+import { getPostsWithLocaleOriginals } from '@/lib/content/posts';
 import type { PostData } from '@/lib/content/types';
 import { siteConfig } from '../../../site.config';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
@@ -43,7 +43,7 @@ function groupPostsByDate(posts: PostData[]): GroupedPosts {
 }
 
 export default function ArchivePage() {
-  const posts = getAllPosts();
+  const posts = getPostsWithLocaleOriginals();
   const groupedPosts = groupPostsByDate(posts);
   const showAuthors = siteConfig.posts?.archive?.showAuthors;
 

@@ -1,5 +1,5 @@
 import { getAllTags } from '@/lib/content/discovery';
-import { getPostsByTag } from '@/lib/content/posts';
+import { getAggregatedPostsByTag } from '@/lib/content/posts';
 import { getFlowsByTag } from '@/lib/content/flows';
 import { getNotesByTag } from '@/lib/content/notes';
 import { isFeatureEnabled } from '@/lib/features';
@@ -36,7 +36,7 @@ function resolveTagParam(rawTag: string) {
   // disabled so a note/flow-only tag doesn't render links to 404'd routes.
   const flowEnabled = isFeatureEnabled('flow');
   return resolveFromParam(rawTag, (candidate) => {
-    const posts = getPostsByTag(candidate);
+    const posts = getAggregatedPostsByTag(candidate);
     const flows = flowEnabled ? getFlowsByTag(candidate) : [];
     const notes = flowEnabled ? getNotesByTag(candidate) : [];
     return posts.length + flows.length + notes.length > 0

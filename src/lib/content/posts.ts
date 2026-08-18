@@ -158,6 +158,38 @@ export function getFeaturedPosts(locale: string = DEFAULT_LOCALE): PostData[] {
   return featuredPostsMemo.get(locale, () => getAllPosts(locale).filter(post => post.featured));
 }
 
+// ─── cross-tree aggregation ──────────────────────────────────────────────────
+
+const aggregatedPostsMemo = createKeyedMemo<string, PostData[]>();
+
+/**
+ * The default tree plus every locale tree's ORIGINALS (posts with no
+ * default-tree twin), date-sorted. This is the shared domain for corpus-wide
+ * surfaces — feeds, archive, author and tag aggregations: content that
+ * migrated into a locale tree must not vanish from them, while twins stay
+ * excluded (they would double-count their canonical counterpart).
+ */
+export function getPostsWithLocaleOriginals(): PostData[] {
+  return aggregatedPostsMemo.get('all', () => {
+    const nonDefault = siteConfig.i18n.enabled
+      ? siteConfig.i18n.locales.filter(locale => locale !== DEFAULT_LOCALE)
+      : [];
+    return [
+      ...getAllPosts(),
+      ...nonDefault.flatMap(locale =>
+        getAllPosts(locale).filter(post => !getTwinPost(post, DEFAULT_LOCALE))
+      ),
+    ].sort(byDateDesc);
+  });
+}
+
+/** Tag lookup over the aggregated (default ∪ originals) domain — for the global /tags pages. */
+export function getAggregatedPostsByTag(tag: string): PostData[] {
+  return getPostsWithLocaleOriginals().filter(post =>
+    post.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
+  );
+}
+
 // ─── twin lookups across locale trees ────────────────────────────────────────
 
 /**

@@ -4,7 +4,7 @@ import { getPostUrl, getFlowUrl, getNoteUrl, getSeriesUrl, localizeUrl } from '.
 import { isFeatureEnabled } from '../features';
 import { domainDir } from './io';
 import { createMemo, createProdKeyedMemo } from './cache';
-import { getAllPosts } from './posts';
+import { getAllPosts, getPostsWithLocaleOriginals } from './posts';
 import { getAllFlows } from './flows';
 import { getAllNotes } from './notes';
 import { getSeriesData } from './series';
@@ -22,7 +22,7 @@ const allTagsMemo = createMemo<Record<string, number>>();
 
 export function getAllTags(): Record<string, number> {
   return allTagsMemo.get(() => {
-    const allPosts = getAllPosts();
+    const allPosts = getPostsWithLocaleOriginals();
     const allFlows = getAllFlows();
     const allNotes = getAllNotes();
 
