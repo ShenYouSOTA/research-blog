@@ -7,13 +7,16 @@ import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
 import CoverImage from '@/components/CoverImage';
 import Link from 'next/link';
-import { t, resolveLocale } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import { getPostUrl, getPostUrlInCollection, getSeriesUrl, withTrailingSlash } from '@/lib/urls';
 import RedirectPage from '@/components/RedirectPage';
 import { seriesSlugParams, resolveSeriesParam } from '@/lib/route-aliases';
 import { isFeatureEnabled } from '@/lib/features';
 import { resolveImageUrl } from '@/lib/json-ld';
 import { buildArticleMetadata } from '@/lib/metadata';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 const PAGE_SIZE = siteConfig.pagination.series;
 
@@ -43,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const posts = getSeriesPosts(slug);
     if (posts.length > 0) {
         return {
-            title: `${slug} - ${t('series')} | ${resolveLocale(siteConfig.title)}`,
+            title: `${slug} - ${t('series')} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
             description: `${posts.length} ${t('posts').toLowerCase()} - ${slug}.`,
         }
     }
@@ -56,6 +59,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const canonicalUrl = withTrailingSlash(`${siteUrl}${getSeriesUrl(slug)}`);
   return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
     title: seriesData.title,
     titleSuffix: ` - ${t('series')}`,
     description: seriesData.excerpt,
@@ -184,7 +188,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
       </header>
 
       {/* Series Catalog */}
-      <SeriesCatalog posts={posts} totalPosts={allPosts.length} collectionSlug={isCollection ? slug : undefined} />
+      <SeriesCatalog posts={posts} locale={DEFAULT_LOCALE} totalPosts={allPosts.length} collectionSlug={isCollection ? slug : undefined} />
 
       {totalPages > 1 && (
         <div className="mt-12">

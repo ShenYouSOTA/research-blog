@@ -5,7 +5,7 @@ import type { PostData, PostNavItem } from '@/lib/content/types';
 import PostLayout from '@/layouts/PostLayout';
 import SimpleLayout from '@/layouts/SimpleLayout';
 import { siteConfig } from '../../site.config';
-import { resolveLocale } from '@/lib/i18n';
+import { resolveLocaleValue } from '@/lib/i18n';
 import { getPostUrl, withTrailingSlash } from '@/lib/urls';
 import { buildPostJsonLd, serializeJsonLd } from '@/lib/json-ld';
 
@@ -16,14 +16,14 @@ import { buildPostJsonLd, serializeJsonLd } from '@/lib/json-ld';
  * this component owns JSON-LD, the simple-layout branch, and the
  * related/adjacent/backlinks/series assembly.
  */
-export default function RenderPostPage({ post }: { post: PostData }) {
+export default function RenderPostPage({ post, locale }: { post: PostData; locale: string }) {
   const layout = post.layout || 'post';
 
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
   const jsonLd = buildPostJsonLd({
     post,
     postUrl: withTrailingSlash(`${siteUrl}${getPostUrl(post)}`),
-    siteTitle: resolveLocale(siteConfig.title),
+    siteTitle: resolveLocaleValue(siteConfig.title, locale),
     siteUrl,
     defaultOgImage: siteConfig.ogImage,
   });
@@ -55,6 +55,7 @@ export default function RenderPostPage({ post }: { post: PostData }) {
       {jsonLdScript}
       <PostLayout
         post={post}
+        locale={locale}
         relatedPosts={relatedPosts}
         seriesPosts={seriesPosts}
         seriesTitle={seriesTitle}

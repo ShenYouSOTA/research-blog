@@ -3,13 +3,14 @@ import ExportedImage from 'next-image-export-optimizer';
 import MetaLabel from './ui/MetaLabel';
 import { getAuthorSlug } from '@/lib/content/authors';
 import { siteConfig } from '../../site.config';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import { shouldBypassImageOptimization } from '@/lib/image-utils';
 
 const isDev = process.env.NODE_ENV === 'development';
 const isExternal = (src: string) => src.startsWith('http') || src.startsWith('//');
 
-export default function AuthorCard({ authors }: { authors: string[] }) {
+export default function AuthorCard({ authors, locale }: { authors: string[]; locale: string }) {
+  const { t } = getTranslator(locale);
   if (!authors || authors.length === 0) return null;
 
   return (

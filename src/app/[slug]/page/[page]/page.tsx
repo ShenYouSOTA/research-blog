@@ -7,13 +7,16 @@ import Pagination from '@/components/Pagination';
 import { siteConfig } from '../../../../../site.config';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { t, resolveLocale } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import PageHeader from '@/components/PageHeader';
 import CoverImage from '@/components/CoverImage';
 import Link from 'next/link';
 import { getPostsBasePath } from '@/lib/urls';
 import { prefixedPageParams, resolveSeriesListingPrefix } from '@/lib/route-aliases';
 import { paginate } from '@/lib/pagination';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 const POST_PAGE_SIZE = siteConfig.pagination.posts;
 const SERIES_PAGE_SIZE = siteConfig.pagination.series;
@@ -35,7 +38,7 @@ export async function generateMetadata({
 
   if (prefix === basePath && basePath !== 'posts') {
     return {
-      title: `${t('posts')} - ${page} | ${resolveLocale(siteConfig.title)}`,
+      title: `${t('posts')} - ${page} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     };
   }
 
@@ -43,7 +46,7 @@ export async function generateMetadata({
     const seriesData = getSeriesData(matchedSeriesSlug);
     const title = seriesData?.title || matchedSeriesSlug;
     return {
-      title: `${title} - ${page} | ${resolveLocale(siteConfig.title)}`,
+      title: `${title} - ${page} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     };
   }
 
@@ -77,7 +80,7 @@ export default async function PrefixPageRoute({
           subtitleParams={{ page, total: totalPages }}
           className="mb-12"
         />
-        <PostList posts={posts} />
+        <PostList posts={posts} locale={DEFAULT_LOCALE} />
         <div className="mt-12">
           <Pagination currentPage={page} totalPages={totalPages} basePath={`/${basePath}`} />
         </div>
@@ -148,7 +151,7 @@ export default async function PrefixPageRoute({
             )}
           </div>
         </header>
-        <SeriesCatalog posts={posts} startIndex={start} totalPosts={allPosts.length} />
+        <SeriesCatalog posts={posts} locale={DEFAULT_LOCALE} startIndex={start} totalPosts={allPosts.length} />
         <div className="mt-12">
           <Pagination currentPage={page} totalPages={totalPages} basePath={`/${prefix}`} />
         </div>

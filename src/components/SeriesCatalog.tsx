@@ -4,18 +4,20 @@ import CoverImage from './CoverImage';
 import Tag from './Tag';
 import { getPostUrl, getPostUrlInCollection } from '@/lib/urls';
 import { padNumber } from '@/lib/format-utils';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { CARD_HOVER, COVER_ZOOM } from '@/lib/ui-classes';
 
 interface SeriesCatalogProps {
   posts: PostData[];
+  locale: string;
   startIndex?: number;
   totalPosts?: number;
   collectionSlug?: string;
 }
 
-export default function SeriesCatalog({ posts, startIndex = 0, totalPosts, collectionSlug }: SeriesCatalogProps) {
+export default function SeriesCatalog({ posts, locale, startIndex = 0, totalPosts, collectionSlug }: SeriesCatalogProps) {
+  const { t } = getTranslator(locale);
   const total = totalPosts ?? posts.length;
   const postHref = (post: PostData) =>
     collectionSlug ? getPostUrlInCollection(post, collectionSlug) : getPostUrl(post);

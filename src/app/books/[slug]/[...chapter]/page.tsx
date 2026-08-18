@@ -4,10 +4,12 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../../site.config';
 import BookLayout from '@/layouts/BookLayout';
-import { resolveLocale } from '@/lib/i18n';
+import { resolveLocaleValue } from '@/lib/i18n';
 import { buildBookChapterJsonLd, serializeJsonLd } from '@/lib/json-ld';
 import { getBookUrl, getBookChapterUrl } from '@/lib/urls';
 import { safeDecodeParam } from '@/lib/route-params';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
 /**
  * The chapter route is a catch-all (`[...chapter]`) so that nested chapter ids
@@ -71,14 +73,14 @@ export async function generateMetadata({ params }: { params: ChapterPageParams }
     : siteConfig.ogImage;
 
   return {
-    title: `${chapter.title} - ${book.title} | ${resolveLocale(siteConfig.title)}`,
+    title: `${chapter.title} - ${book.title} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     description: chapter.excerpt,
     openGraph: {
       title: `${chapter.title} - ${book.title}`,
       description: chapter.excerpt,
       type: 'article',
       url: `${siteConfig.baseUrl}${getBookChapterUrl(slug, chapterSlug)}`,
-      siteName: resolveLocale(siteConfig.title),
+      siteName: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
       images: [{ url: ogImage, width: 1200, height: 630, alt: chapter.title }],
     },
     twitter: {
@@ -109,7 +111,7 @@ export default async function BookChapterPage({ params }: { params: ChapterPageP
     book,
     chapterUrl: `${siteUrl}${getBookChapterUrl(slug, chapterSlug)}`,
     bookUrl: `${siteUrl}${getBookUrl(slug)}`,
-    siteTitle: resolveLocale(siteConfig.title),
+    siteTitle: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
     siteUrl,
   });
 

@@ -7,11 +7,14 @@ import { Metadata } from 'next';
 import { siteConfig } from '../../../../../../site.config';
 import CoverImage from '@/components/CoverImage';
 import Link from 'next/link';
-import { t, resolveLocale, tWith } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import { getSeriesListUrl, withTrailingSlash } from '@/lib/urls';
 import RedirectPage from '@/components/RedirectPage';
 import { seriesPageParams, resolveSeriesParam } from '@/lib/route-aliases';
 import { paginate } from '@/lib/pagination';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t, tWith } = getTranslator(DEFAULT_LOCALE);
 
 const PAGE_SIZE = siteConfig.pagination.series;
 
@@ -38,7 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const allPosts = seriesData?.type === 'collection' ? getCollectionPosts(slug) : getSeriesPosts(slug);
   const totalPages = Math.ceil(allPosts.length / PAGE_SIZE);
   return {
-    title: `${title} - ${tWith('page_of_total', { page, total: totalPages })} | ${resolveLocale(siteConfig.title)}`,
+    title: `${title} - ${tWith('page_of_total', { page, total: totalPages })} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
   };
 }
 
@@ -118,7 +121,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
       </header>
 
       {/* Series Catalog */}
-      <SeriesCatalog posts={posts} startIndex={start} totalPosts={allPosts.length} collectionSlug={isCollection ? slug : undefined} />
+      <SeriesCatalog posts={posts} locale={DEFAULT_LOCALE} startIndex={start} totalPosts={allPosts.length} collectionSlug={isCollection ? slug : undefined} />
 
       <div className="mt-12">
         <Pagination currentPage={page} totalPages={totalPages} basePath={getSeriesListUrl() + `/${slug}`} />

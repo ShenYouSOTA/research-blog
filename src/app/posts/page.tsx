@@ -9,11 +9,13 @@ import { getPostsBasePath } from '@/lib/urls';
 import { notFound } from 'next/navigation';
 import { firstPage } from '@/lib/pagination';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
 const PAGE_SIZE = siteConfig.pagination.posts;
 
 export async function generateMetadata(): Promise<Metadata> {
   const allPosts = getListingPosts();
-  return createListingMetadata({ titleKey: 'posts', descriptionKey: 'posts_subtitle', count: allPosts.length });
+  return createListingMetadata({ locale: DEFAULT_LOCALE, titleKey: 'posts', descriptionKey: 'posts_subtitle', count: allPosts.length });
 }
 
 export default function AllPostsPage() {
@@ -30,7 +32,7 @@ export default function AllPostsPage() {
         className="mb-12"
       />
 
-      <PostList posts={posts} />
+      <PostList posts={posts} locale={DEFAULT_LOCALE} />
 
       {totalPages > 1 && (
         <div className="mt-12">

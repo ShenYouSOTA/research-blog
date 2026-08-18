@@ -13,8 +13,10 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { getAllSeries, getSeriesData } from '@/lib/content/series';
 import { getAllBooks } from '@/lib/content/books';
-import { resolveLocale } from "@/lib/i18n";
+import { resolveLocaleValue } from "@/lib/i18n";
 import "./globals.css";
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
 const inter = localFont({
   src: [
@@ -82,14 +84,14 @@ const feedAlternates = (() => {
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.baseUrl),
-  title: resolveLocale(siteConfig.title),
-  description: resolveLocale(siteConfig.description),
+  title: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
+  description: resolveLocaleValue(siteConfig.description, DEFAULT_LOCALE),
   icons: {
     icon: faviconMeta,
   },
   ...(feedAlternates && { alternates: feedAlternates }),
   openGraph: {
-    siteName: resolveLocale(siteConfig.title),
+    siteName: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
     locale: siteConfig.i18n.defaultLocale,
     type: 'website',
     images: [{ url: siteConfig.ogImage, width: 1200, height: 630 }],

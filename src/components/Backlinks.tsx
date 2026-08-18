@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import type { BacklinkSource } from '@/lib/content/discovery';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import MetaLabel from '@/components/ui/MetaLabel';
 
 interface BacklinksProps {
   backlinks: BacklinkSource[];
+  locale: string;
 }
 
-export default function Backlinks({ backlinks }: BacklinksProps) {
+export default function Backlinks({ backlinks, locale }: BacklinksProps) {
+  const { t } = getTranslator(locale);
   if (!backlinks.length) return null;
 
   return (

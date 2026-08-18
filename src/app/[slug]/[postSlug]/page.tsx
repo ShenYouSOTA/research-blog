@@ -8,6 +8,8 @@ import RedirectPage from '@/components/RedirectPage';
 import RenderPostPage from '@/components/RenderPostPage';
 import { prefixedPostParams, resolvePrefixedPost } from '@/lib/route-aliases';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
 export async function generateStaticParams() {
   return prefixedPostParams();
 }
@@ -38,6 +40,7 @@ export async function generateMetadata({
   }
 
   return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
     title: post.title,
     description: post.excerpt,
     publishedTime: post.date,
@@ -64,5 +67,5 @@ export default async function PrefixPostPage({
     return <RedirectPage to={resolution.to} />;
   }
 
-  return <RenderPostPage post={resolution.post} />;
+  return <RenderPostPage post={resolution.post} locale={DEFAULT_LOCALE} />;
 }

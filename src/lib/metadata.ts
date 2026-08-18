@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
-import { t, tWith, resolveLocale } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import type { TranslationKey } from '@/i18n/translations';
 import { siteConfig } from '../../site.config';
 
 interface ListingMetadataOptions {
+  /** Locale the title/description strings resolve in. */
+  locale: string;
   /** Section title key, e.g. 'posts' | 'books' | 'series' | 'notes' | 'flow'. */
   titleKey: TranslationKey;
   /** When both are set, the title gains a " - Page X of Y" segment. */
@@ -25,6 +27,7 @@ interface ListingMetadataOptions {
  * paginated titles on the `page_of_total` ("Page X of Y") form.
  */
 export function createListingMetadata({
+  locale,
   titleKey,
   page,
   totalPages,
@@ -33,6 +36,7 @@ export function createListingMetadata({
   descriptionOneKey,
   count,
 }: ListingMetadataOptions): Metadata {
+  const { t, tWith } = getTranslator(locale);
   // Strict build over silent failure: catch caller mistakes here rather than
   // emitting a quietly-wrong title/description. (We deliberately do NOT assert
   // page <= totalPages: paginationStaticParams emits a sentinel `page: 2` even
@@ -42,7 +46,7 @@ export function createListingMetadata({
     throw new Error('createListingMetadata: page and totalPages must both be set or both be unset');
   }
 
-  const siteTitle = resolveLocale(siteConfig.title);
+  const siteTitle = resolveLocaleValue(siteConfig.title, locale);
   const section = t(titleKey);
   const title =
     page != null && totalPages != null
@@ -66,6 +70,8 @@ export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
 
 interface ArticleMetadataOptions {
+  /** Locale the site title resolves in. */
+  locale: string;
   /** Article title. The page <title> becomes `${title}${titleSuffix} | ${siteTitle}`. */
   title: string;
   /** Extra segment between title and site name, e.g. ` - ${t('series')}`. */
@@ -82,6 +88,11 @@ interface ArticleMetadataOptions {
    * served page emits no canonical link while its bare-path variant circulates.
    */
   canonicalUrl?: string;
+  /**
+   * Per-locale alternate URLs, emitted as `alternates.languages` (hreflang).
+   * Plumbing for the locale-routes SEO slice — omit until callers thread it.
+   */
+  languageAlternates?: Record<string, string>;
   /** Absolute OG image (resolve via resolveImageUrl). Omit to emit no images. */
   ogImage?: string;
   /** 'none' omits the twitter block entirely (notes). */
@@ -95,6 +106,7 @@ interface ArticleMetadataOptions {
  * presence, twitter card) rather than forcing them identical.
  */
 export function buildArticleMetadata({
+  locale,
   title,
   titleSuffix = '',
   description,
@@ -103,15 +115,21 @@ export function buildArticleMetadata({
   authors,
   url,
   canonicalUrl,
+  languageAlternates,
   ogImage,
   twitterCard = ogImage ? 'summary_large_image' : 'summary',
 }: ArticleMetadataOptions): Metadata {
-  const siteTitle = resolveLocale(siteConfig.title);
+  const siteTitle = resolveLocaleValue(siteConfig.title, locale);
+
+  const alternates = {
+    ...(canonicalUrl ? { canonical: canonicalUrl } : {}),
+    ...(languageAlternates ? { languages: languageAlternates } : {}),
+  };
 
   const metadata: Metadata = {
     title: `${title}${titleSuffix} | ${siteTitle}`,
     description,
-    ...(canonicalUrl ? { alternates: { canonical: canonicalUrl } } : {}),
+    ...(canonicalUrl || languageAlternates ? { alternates } : {}),
     openGraph: {
       title,
       description,

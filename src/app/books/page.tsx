@@ -4,13 +4,18 @@ import { isFeatureEnabled } from '@/lib/features';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ContentCard from '@/components/ContentCard';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
+import { siteConfig } from '../../../site.config';
 import { createListingMetadata } from '@/lib/metadata';
 import PageHeader from '@/components/PageHeader';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 export async function generateMetadata(): Promise<Metadata> {
   const books = getAllBooks();
   return createListingMetadata({
+    locale: DEFAULT_LOCALE,
     titleKey: 'books',
     descriptionKey: 'books_subtitle',
     descriptionOneKey: 'books_subtitle_one',
@@ -39,6 +44,7 @@ export default function BooksPage() {
             href={getBookUrl(book.slug)}
             title={book.title}
             slug={book.slug}
+            locale={DEFAULT_LOCALE}
             coverImage={book.coverImage}
             badge={`${book.chapters.length} ${t('chapters_count')}`}
             authors={book.authors}

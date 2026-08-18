@@ -4,13 +4,17 @@ import { isFeatureEnabled } from '@/lib/features';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import ContentCard from '@/components/ContentCard';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
+import { siteConfig } from '../../../site.config';
 import { createListingMetadata } from '@/lib/metadata';
 import PageHeader from '@/components/PageHeader';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
+
 export async function generateMetadata(): Promise<Metadata> {
   const count = Object.keys(getAllSeries()).length;
-  return createListingMetadata({ titleKey: 'series', descriptionKey: 'series_subtitle', count });
+  return createListingMetadata({ locale: DEFAULT_LOCALE, titleKey: 'series', descriptionKey: 'series_subtitle', count });
 }
 
 export default function SeriesIndexPage() {
@@ -50,6 +54,7 @@ export default function SeriesIndexPage() {
               href={getSeriesUrl(slug)}
               title={title}
               slug={slug}
+              locale={DEFAULT_LOCALE}
               coverImage={seriesData?.coverImage}
               badge={`${posts.length} ${t('parts')}`}
               authors={authors}

@@ -7,11 +7,14 @@ import { siteConfig } from '../../../../site.config';
 import CoverImage from '@/components/CoverImage';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import Link from 'next/link';
-import { t, resolveLocale } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import { buildBookJsonLd, serializeJsonLd, resolveImageUrl } from '@/lib/json-ld';
 import { buildArticleMetadata } from '@/lib/metadata';
 import { getBookUrl, getBookChapterUrl, withTrailingSlash } from '@/lib/urls';
 import { safeDecodeParam } from '@/lib/route-params';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 // Visual depth limit for nested-section headings. After the first two levels
 // we keep nesting structurally but stop bumping the heading style so deeply
@@ -80,6 +83,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const canonicalUrl = withTrailingSlash(`${siteUrl}${getBookUrl(book.slug)}`);
   return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
     title: book.title,
     description: book.excerpt,
     type: 'website',
@@ -106,7 +110,7 @@ export default async function BookLandingPage({ params }: { params: Promise<{ sl
   const jsonLd = buildBookJsonLd({
     book,
     bookUrl: `${siteUrl}${getBookUrl(slug)}`,
-    siteTitle: resolveLocale(siteConfig.title),
+    siteTitle: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
     siteUrl,
     defaultOgImage: siteConfig.ogImage,
   });

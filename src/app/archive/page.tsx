@@ -3,12 +3,15 @@ import { getSeriesData } from '@/lib/content/series';
 import { getAllPosts } from '@/lib/content/posts';
 import type { PostData } from '@/lib/content/types';
 import { siteConfig } from '../../../site.config';
-import { resolveLocale, t } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import PageHeader from '@/components/PageHeader';
 import { getPostUrl } from '@/lib/urls';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
+
 export const metadata = {
-  title: `Archive | ${resolveLocale(siteConfig.title)}`,
+  title: `Archive | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
   description: t('archive_description'),
 };
 

@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import BookLandingPage from "@/app/books/[slug]/page";
 import { renderAsync } from "@/test-utils/render";
 import { getBookData } from '@/lib/content/books';
-import { t } from "@/lib/i18n";
+import { getTranslator } from "@/lib/i18n";
+import { siteConfig } from "../../site.config";
+
+const { t } = getTranslator(siteConfig.i18n.defaultLocale);
 import { getBookChapterUrl } from "@/lib/urls";
 
 // Renders the actual book landing page server component for a real fixture

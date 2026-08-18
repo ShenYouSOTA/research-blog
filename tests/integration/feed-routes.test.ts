@@ -7,7 +7,7 @@ import { GET as getPostsRss } from '@/app/posts/feed.xml/route';
 import { GET as getPostsAtom } from '@/app/posts/feed.atom/route';
 import { GET as getFlowsRss } from '@/app/flows/feed.xml/route';
 import { GET as getFlowsAtom } from '@/app/flows/feed.atom/route';
-import { resolveLocale } from '@/lib/i18n';
+import { resolveLocaleValue } from '@/lib/i18n';
 import { siteConfig } from '../../site.config';
 
 type FeedKind = 'rss' | 'atom';
@@ -25,7 +25,7 @@ const routes: Array<{ name: string; get: RouteHandler; kind: FeedKind }> = [
 ];
 
 const baseUrl = siteConfig.baseUrl.replace(/\/+$/, '');
-const siteTitle = resolveLocale(siteConfig.title);
+const siteTitle = resolveLocaleValue(siteConfig.title, siteConfig.i18n.defaultLocale);
 
 /** CDATA sections hold author-provided content; strip them before structural checks. */
 function stripCdata(xml: string): string {

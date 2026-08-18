@@ -8,6 +8,8 @@ import { createListingMetadata } from '@/lib/metadata';
 import PageHeader from '@/components/PageHeader';
 import NoteContent from '@/components/NoteContent';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
 const PAGE_SIZE = siteConfig.pagination.notes ?? 20;
 
 export function generateStaticParams() {
@@ -21,7 +23,7 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: { params: Promise<{ page: string }> }): Promise<Metadata> {
   const { page } = await params;
   const totalPages = Math.ceil(getAllNotes().length / PAGE_SIZE);
-  return createListingMetadata({ titleKey: 'notes', page: parseInt(page, 10), totalPages });
+  return createListingMetadata({ locale: DEFAULT_LOCALE, titleKey: 'notes', page: parseInt(page, 10), totalPages });
 }
 
 export default async function NotesPaginatedPage({ params }: { params: Promise<{ page: string }> }) {

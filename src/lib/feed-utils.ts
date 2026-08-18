@@ -3,7 +3,7 @@ import { getAllFlows } from './content/flows';
 import { buildSlugRegistry, type SlugRegistryEntry } from './content/discovery';
 import { siteConfig } from '../../site.config';
 import { getPostUrl, getFlowUrl, withTrailingSlash } from './urls';
-import { resolveLocale } from './i18n';
+import { resolveLocaleValue } from './i18n';
 import { markdownToHtml } from './markdown-to-html';
 import { sanitizeRenderedRstHtml } from './rst-sanitize';
 
@@ -169,7 +169,7 @@ export function generateRssFeed(feedType: FeedType, selfUrlPath: string): Respon
   const useFullContent = contentMode === 'full';
   const items = getFeedItems(feedType, useFullContent);
   const contentNs = useFullContent ? ' xmlns:content="http://purl.org/rss/modules/content/"' : '';
-  const siteTitle = resolveLocale(siteConfig.title);
+  const siteTitle = resolveLocaleValue(siteConfig.title, siteConfig.i18n.defaultLocale);
   const lastBuildDate = items[0]?.date.toUTCString() ?? new Date().toUTCString();
 
   const selfUrl = `${baseUrl}${selfUrlPath}`;
@@ -203,7 +203,7 @@ export function generateRssFeed(feedType: FeedType, selfUrlPath: string): Respon
   <channel>
     <title><![CDATA[${escapeCdata(siteTitle)}]]></title>
     <link>${escapeXml(baseUrl)}</link>
-    <description><![CDATA[${escapeCdata(resolveLocale(siteConfig.description))}]]></description>
+    <description><![CDATA[${escapeCdata(resolveLocaleValue(siteConfig.description, siteConfig.i18n.defaultLocale))}]]></description>
     <language>${siteConfig.i18n.defaultLocale}</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <atom:link href="${escapeXml(selfUrl)}" rel="self" type="application/rss+xml" />${imageXml}
@@ -233,7 +233,7 @@ export function generateAtomFeed(feedType: FeedType, selfUrlPath: string): Respo
   const selfUrl = `${baseUrl}${selfUrlPath}`;
 
   const hasAllAuthors = items.every(item => item.authors && item.authors.length > 0);
-  const siteTitle = resolveLocale(siteConfig.title);
+  const siteTitle = resolveLocaleValue(siteConfig.title, siteConfig.i18n.defaultLocale);
   const defaultAuthor = siteConfig.posts?.authors?.default?.[0];
   const feedAuthorName = defaultAuthor ? defaultAuthor : siteTitle;
   const feedAuthorXml = hasAllAuthors ? '' : `\n  <author><name>${escapeXml(feedAuthorName)}</name></author>`;
@@ -261,12 +261,12 @@ export function generateAtomFeed(feedType: FeedType, selfUrlPath: string): Respo
 
   const atomXml = `<?xml version="1.0" encoding="UTF-8" ?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title><![CDATA[${escapeCdata(resolveLocale(siteConfig.title))}]]></title>
+  <title><![CDATA[${escapeCdata(resolveLocaleValue(siteConfig.title, siteConfig.i18n.defaultLocale))}]]></title>
   <link href="${escapeXml(baseUrl)}" />
   <link href="${escapeXml(selfUrl)}" rel="self" type="application/atom+xml" />
   <id>${escapeXml(selfUrl)}</id>
   <updated>${feedUpdated}</updated>
-  <subtitle><![CDATA[${escapeCdata(resolveLocale(siteConfig.description))}]]></subtitle>${feedAuthorXml}
+  <subtitle><![CDATA[${escapeCdata(resolveLocaleValue(siteConfig.description, siteConfig.i18n.defaultLocale))}]]></subtitle>${feedAuthorXml}
 ${entriesXml}
 </feed>`;
 

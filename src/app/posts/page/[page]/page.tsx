@@ -9,6 +9,8 @@ import PageHeader from '@/components/PageHeader';
 import { getPostsBasePath } from '@/lib/urls';
 import { paginate, paginationStaticParams } from '@/lib/pagination';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
 const PAGE_SIZE = siteConfig.pagination.posts;
 
 export function generateStaticParams() {
@@ -25,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ page: str
   const { page } = await params;
   const allPosts = getListingPosts();
   const totalPages = Math.ceil(allPosts.length / PAGE_SIZE);
-  return createListingMetadata({ titleKey: 'posts', page: parseInt(page, 10), totalPages });
+  return createListingMetadata({ locale: DEFAULT_LOCALE, titleKey: 'posts', page: parseInt(page, 10), totalPages });
 }
 
 export default async function PostsPage({ params }: { params: Promise<{ page: string }> }) {
@@ -44,7 +46,7 @@ export default async function PostsPage({ params }: { params: Promise<{ page: st
         className="mb-12"
       />
 
-      <PostList posts={posts} />
+      <PostList posts={posts} locale={DEFAULT_LOCALE} />
 
       <div className="mt-12">
         <Pagination currentPage={page} totalPages={totalPages} basePath="/posts" />

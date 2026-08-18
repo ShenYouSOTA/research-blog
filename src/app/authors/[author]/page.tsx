@@ -10,9 +10,12 @@ import { getBookUrl, getSeriesUrl, withTrailingSlash } from '@/lib/urls';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
-import { t, resolveLocale } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import AuthorStats from '@/components/AuthorStats';
 import TranslatedText from '@/components/TranslatedText';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 export async function generateStaticParams() {
   const authors = getAllAuthors();
@@ -37,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ author: s
 
   if (!resolvedAuthor) {
     return {
-      title: `Author Not Found | ${resolveLocale(siteConfig.title)}`,
+      title: `Author Not Found | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     };
   }
 
@@ -45,7 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ author: s
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
   const canonicalUrl = withTrailingSlash(`${siteUrl}/authors/${getAuthorSlug(resolvedAuthor)}`);
   return {
-    title: `${resolvedAuthor} | ${resolveLocale(siteConfig.title)}`,
+    title: `${resolvedAuthor} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     description: `${posts.length} ${t('posts').toLowerCase()} ${t('written_by').toLowerCase()} ${resolvedAuthor}.`,
     // Legacy name-form URLs (/authors/Amytis%20Team) and the canonical slug URL
     // both render; point both at the slug URL so crawlers don't see duplicates.
@@ -155,6 +158,7 @@ export default async function AuthorPage({
                 href={getBookUrl(book.slug)}
                 title={book.title}
                 slug={book.slug}
+                locale={DEFAULT_LOCALE}
                 coverImage={book.coverImage}
                 badge={`${book.chapters.length} ${t('chapters_count')}`}
                 excerpt={book.excerpt}
@@ -176,6 +180,7 @@ export default async function AuthorPage({
                 href={getSeriesUrl(slug)}
                 title={data.title}
                 slug={slug}
+                locale={DEFAULT_LOCALE}
                 coverImage={data.coverImage}
                 badge={`${postCount} ${t('parts')}`}
                 excerpt={data.excerpt}
@@ -190,7 +195,7 @@ export default async function AuthorPage({
         {authorSeries.length > 0 && (
           <h2 className="text-2xl font-serif font-bold text-heading mb-8"><TranslatedText translationKey="posts" /></h2>
         )}
-        <PostList posts={posts} />
+        <PostList posts={posts} locale={DEFAULT_LOCALE} />
       </section>
     </div>
   );

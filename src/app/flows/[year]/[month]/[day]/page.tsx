@@ -4,7 +4,7 @@ import { getAllFlows, getFlowBySlug, getAdjacentFlows } from '@/lib/content/flow
 import { siteConfig } from '../../../../../../site.config';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import FlowCalendarSidebar from '@/components/FlowCalendarSidebar';
 import Tag from '@/components/Tag';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
@@ -15,6 +15,9 @@ import { resolveCommentable } from '@/lib/comments';
 import { buildArticleMetadata } from '@/lib/metadata';
 import { withTrailingSlash } from '@/lib/urls';
 import Link from 'next/link';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 export function generateStaticParams() {
   if (!isFeatureEnabled('flow')) return [{ year: '_', month: '_', day: '_' }];
@@ -35,6 +38,7 @@ export async function generateMetadata({ params }: { params: Promise<{ year: str
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
   const canonicalUrl = withTrailingSlash(`${siteUrl}/flows/${year}/${month}/${day}`);
   return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
     title: flow.title,
     description: flow.excerpt,
     publishedTime: flow.date,
@@ -102,7 +106,7 @@ export default async function FlowPage({ params }: { params: Promise<{ year: str
             <MarkdownRenderer content={flow.content} slug={`flows/${year}/${month}/${day}`} slugRegistry={slugRegistry} />
           </div>
 
-          <Backlinks backlinks={backlinks} />
+          <Backlinks backlinks={backlinks} locale={DEFAULT_LOCALE} />
 
           <ShareBar url={flowUrl} title={flow.title} className="mt-8 mb-2" />
 

@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import SeriesPage from "@/app/series/[slug]/page";
 import { renderAsync } from "@/test-utils/render";
 import { getSeriesData, getSeriesPosts } from '@/lib/content/series';
-import { t } from "@/lib/i18n";
+import { getTranslator } from "@/lib/i18n";
+import { siteConfig } from "../../site.config";
+
+const { t } = getTranslator(siteConfig.i18n.defaultLocale);
 import { getPostUrl } from "@/lib/urls";
 
 // Renders the actual series landing page server component for a real fixture

@@ -8,9 +8,12 @@ import { createListingMetadata } from '@/lib/metadata';
 import NoteContent from '@/components/NoteContent';
 import PageHeader from '@/components/PageHeader';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
 const PAGE_SIZE = siteConfig.pagination.notes ?? 20;
 
 export const metadata: Metadata = createListingMetadata({
+  locale: DEFAULT_LOCALE,
   titleKey: 'notes',
   description: 'Knowledge base notes.',
 });

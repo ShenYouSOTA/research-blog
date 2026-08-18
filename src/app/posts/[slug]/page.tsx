@@ -9,6 +9,8 @@ import { buildArticleMetadata } from '@/lib/metadata';
 import RedirectPage from '@/components/RedirectPage';
 import RenderPostPage from '@/components/RenderPostPage';
 
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
 function resolvePostFromParam(rawSlug: string) {
   return resolveFromParam(rawSlug, (candidate) => getPostBySlug(candidate));
 }
@@ -79,6 +81,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
     title: post.title,
     description: post.excerpt,
     publishedTime: post.date,
@@ -113,5 +116,5 @@ export default async function PostPage({
     return <RedirectPage to={canonicalUrl} />;
   }
 
-  return <RenderPostPage post={post} />;
+  return <RenderPostPage post={post} locale={DEFAULT_LOCALE} />;
 }

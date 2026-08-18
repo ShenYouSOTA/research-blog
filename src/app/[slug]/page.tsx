@@ -11,10 +11,13 @@ import CoverImage from '@/components/CoverImage';
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../site.config';
-import { resolveLocale, t } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import PageHeader from '@/components/PageHeader';
 import { topLevelSlugParams, resolveTopLevelSlug } from '@/lib/route-aliases';
 import RedirectPage from '@/components/RedirectPage';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 const POST_PAGE_SIZE = siteConfig.pagination.posts;
 const SERIES_PAGE_SIZE = siteConfig.pagination.series;
@@ -37,14 +40,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   switch (resolution?.kind) {
     case 'postsListing':
       return {
-        title: `${t('posts')} | ${resolveLocale(siteConfig.title)}`,
+        title: `${t('posts')} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
         description: t('posts_description'),
       };
     case 'seriesListing': {
       const seriesData = getSeriesData(resolution.seriesSlug);
       if (seriesData) {
         return {
-          title: `${seriesData.title} - ${t('series')} | ${resolveLocale(siteConfig.title)}`,
+          title: `${seriesData.title} - ${t('series')} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
           description: seriesData.excerpt,
         };
       }
@@ -52,7 +55,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     }
     case 'page':
       return {
-        title: `${resolution.page.title} | ${resolveLocale(siteConfig.title)}`,
+        title: `${resolution.page.title} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
         description: resolution.page.excerpt,
       };
     case 'redirect':
@@ -86,7 +89,7 @@ export default async function Page({
           subtitleParams={{ count: allPosts.length }}
           className="mb-12"
         />
-        <PostList posts={posts} />
+        <PostList posts={posts} locale={DEFAULT_LOCALE} />
         {totalPages > 1 && (
           <div className="mt-12">
             <Pagination currentPage={1} totalPages={totalPages} basePath={`/${basePath}`} />
@@ -154,7 +157,7 @@ export default async function Page({
             )}
           </div>
         </header>
-        <SeriesCatalog posts={posts} totalPosts={allPosts.length} />
+        <SeriesCatalog posts={posts} locale={DEFAULT_LOCALE} totalPosts={allPosts.length} />
         {totalPages > 1 && (
           <div className="mt-12">
             <Pagination currentPage={1} totalPages={totalPages} basePath={`/${resolution.prefix}`} />
@@ -175,7 +178,7 @@ export default async function Page({
   const layout = page.layout || 'simple';
 
   if (layout === 'post') {
-    return <PostLayout post={page} commentCategory="staticPages" />;
+    return <PostLayout post={page} locale={DEFAULT_LOCALE} commentCategory="staticPages" />;
   }
 
   return <SimpleLayout post={page} />;

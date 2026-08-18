@@ -30,11 +30,12 @@ interface NoteEntry {
 
 interface TagContentTabsProps {
   posts: PostData[];
+  locale: string;
   flows: FlowEntry[];
   notes: NoteEntry[];
 }
 
-export default function TagContentTabs({ posts, flows, notes }: TagContentTabsProps) {
+export default function TagContentTabs({ posts, locale, flows, notes }: TagContentTabsProps) {
   const { t } = useLanguage();
   // Tabs appear only when more than one content type is present; with a single
   // type the sections render bare, exactly as before notes were added.
@@ -93,7 +94,7 @@ export default function TagContentTabs({ posts, flows, notes }: TagContentTabsPr
               </span>
             </MetaLabel>
           )}
-          <PostList posts={posts} />
+          <PostList posts={posts} locale={locale} />
         </div>
       )}
 

@@ -6,7 +6,7 @@ import { getAllNotes, getNoteBySlug, getAdjacentNotes } from '@/lib/content/note
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../site.config';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import NoteSidebar from '@/components/NoteSidebar';
 import Tag from '@/components/Tag';
@@ -15,6 +15,9 @@ import Comments from '@/components/Comments';
 import { resolveCommentable } from '@/lib/comments';
 import { buildArticleMetadata } from '@/lib/metadata';
 import Link from 'next/link';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
 
 export function generateStaticParams() {
   if (!isFeatureEnabled('flow')) return [{ slug: '_' }];
@@ -40,6 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!note) return { title: 'Not Found' };
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
   return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
     title: note.title,
     description: note.excerpt,
     publishedTime: note.date,

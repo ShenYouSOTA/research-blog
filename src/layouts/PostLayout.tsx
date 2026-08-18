@@ -21,11 +21,12 @@ import ShareBar from '@/components/ShareBar';
 import ImmersiveToggleButton from '@/components/ImmersiveToggleButton';
 import PostReadingShell from '@/components/PostReadingShell';
 import { siteConfig } from '../../site.config';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import { getPostUrl, getStaticPageUrl } from '@/lib/urls';
 
 interface PostLayoutProps {
   post: PostData;
+  locale: string;
   relatedPosts?: PostData[];
   seriesPosts?: PostNavItem[];
   seriesTitle?: string;
@@ -37,7 +38,8 @@ interface PostLayoutProps {
   commentCategory?: 'posts' | 'staticPages';
 }
 
-export default function PostLayout({ post, relatedPosts, seriesPosts, seriesTitle, collectionContexts, prevPost, nextPost, backlinks, slugRegistry, commentCategory = 'posts' }: PostLayoutProps) {
+export default function PostLayout({ post, locale, relatedPosts, seriesPosts, seriesTitle, collectionContexts, prevPost, nextPost, backlinks, slugRegistry, commentCategory = 'posts' }: PostLayoutProps) {
+  const { t } = getTranslator(locale);
   const showToc = siteConfig.posts?.toc !== false && post.toc !== false && post.headings && post.headings.length > 0;
   const hasSeries = !!(post.series && seriesPosts && seriesPosts.length > 0);
   const hasCollections = !!(collectionContexts && collectionContexts.length > 0);
@@ -192,7 +194,7 @@ export default function PostLayout({ post, relatedPosts, seriesPosts, seriesTitl
             {bodyRenderer}
 
             {siteConfig.posts?.authors?.showAuthorCard !== false && (
-              <AuthorCard authors={post.authors} />
+              <AuthorCard authors={post.authors} locale={locale} />
             )}
 
             {post.tags && post.tags.length > 0 && (
@@ -204,7 +206,7 @@ export default function PostLayout({ post, relatedPosts, seriesPosts, seriesTitl
               </div>
             )}
 
-            <Backlinks backlinks={backlinks ?? []} />
+            <Backlinks backlinks={backlinks ?? []} locale={locale} />
 
             <ShareBar
               url={postUrl}
@@ -224,7 +226,7 @@ export default function PostLayout({ post, relatedPosts, seriesPosts, seriesTitl
               <PostNavigation prev={prevPost ?? null} next={nextPost ?? null} currentSlug={post.slug} collectionContexts={collectionContexts} />
             </Suspense>
 
-            <RelatedPosts posts={relatedPosts || []} />
+            <RelatedPosts posts={relatedPosts || []} locale={locale} />
           </article>
         </div>
       </div>
