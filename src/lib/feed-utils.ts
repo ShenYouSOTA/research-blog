@@ -42,6 +42,8 @@ interface FeedContentSource {
   renderedHtml?: string;
   sourceFormat?: 'markdown' | 'rst';
   latex?: boolean;
+  /** Locale tree the entry came from (posts carry it; flows are default-only). */
+  locale?: string;
 }
 
 const escapeHtmlText = (v: string) =>
@@ -147,10 +149,11 @@ export function getFeedItems(feedType: FeedType = 'main', includeFullContent: bo
     return kept.map(({ item }) => item);
   }
 
-  const slugRegistry = buildSlugRegistry();
+  // Per-entry registry: wikilinks inside a locale-original post must resolve
+  // locale-first (the registries are memoized per locale, so this stays cheap).
   return kept.map(({ item, source }) => ({
     ...item,
-    content: itemContentHtml(source, item.url, slugRegistry),
+    content: itemContentHtml(source, item.url, buildSlugRegistry(source.locale)),
   }));
 }
 
