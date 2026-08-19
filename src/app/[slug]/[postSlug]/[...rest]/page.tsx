@@ -92,12 +92,13 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return {
         title: `${seriesData.title}${pageSuffix} - ${t('series')} | ${siteTitle}`,
         description: seriesData.excerpt,
+        openGraph: { locale },
       };
     }
     case 'postsListing':
-      return { title: `${t('posts')} | ${siteTitle}`, description: t('posts_description') };
+      return { title: `${t('posts')} | ${siteTitle}`, description: t('posts_description'), openGraph: { locale } };
     case 'notesListing':
-      return { title: `${t('notes')} | ${siteTitle}` };
+      return { title: `${t('notes')} | ${siteTitle}`, openGraph: { locale } };
     case 'book': {
       const seo = contentSeoUrls(
         localizeUrl(getBookUrl(resolution.book.slug), locale),
@@ -106,6 +107,7 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return {
         title: `${resolution.book.title} | ${siteTitle}`,
         description: resolution.book.excerpt,
+        openGraph: { locale },
         alternates: {
           canonical: seo.canonicalUrl,
           ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
@@ -120,6 +122,7 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return {
         title: `${resolution.chapter.title} - ${resolution.book.title} | ${siteTitle}`,
         description: resolution.chapter.excerpt,
+        openGraph: { locale },
         alternates: {
           canonical: seo.canonicalUrl,
           ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),

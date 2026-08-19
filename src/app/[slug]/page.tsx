@@ -41,6 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
       title: resolveLocaleValue(siteConfig.title, localeSlug),
       description: resolveLocaleValue(siteConfig.description, localeSlug),
+      openGraph: { locale: localeSlug },
     };
   }
 

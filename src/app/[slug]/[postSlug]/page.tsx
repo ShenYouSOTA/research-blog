@@ -42,6 +42,7 @@ function localizedMetadata(locale: string, resolution: LocalizedResolution): Met
       return {
         title: `${resolution.page.title} | ${resolveLocaleValue(siteConfig.title, locale)}`,
         description: resolution.page.excerpt,
+        openGraph: { locale },
         alternates: {
           canonical: seo.canonicalUrl,
           ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
@@ -52,6 +53,7 @@ function localizedMetadata(locale: string, resolution: LocalizedResolution): Met
       return {
         title: `${t('posts')} | ${resolveLocaleValue(siteConfig.title, locale)}`,
         description: t('posts_description'),
+        openGraph: { locale },
       };
     case 'seriesIndexListing':
       return createListingMetadata({
@@ -71,6 +73,7 @@ function localizedMetadata(locale: string, resolution: LocalizedResolution): Met
       return {
         title: `${seriesData.title} - ${t('series')} | ${resolveLocaleValue(siteConfig.title, locale)}`,
         description: seriesData.excerpt,
+        openGraph: { locale },
       };
     }
     default:

@@ -65,6 +65,8 @@ describe('detail-route metadata: canonical split + hreflang', () => {
     });
     expect(md.alternates?.canonical).toBe(`${base}/zh/posts/i18n-routing-considerations/`);
     expect(md.alternates?.languages).toEqual(twinLanguages);
+    // Localized pages must not inherit the root layout's default og:locale.
+    expect(md.openGraph?.locale).toBe('zh');
   });
 
   test('[...rest] zh-original metadata is self-canonical without languages', async () => {
@@ -82,6 +84,7 @@ describe('detail-route metadata: canonical split + hreflang', () => {
     });
     expect(enSide.alternates?.canonical).toBe(`${base}/about/`);
     expect(zhSide.alternates?.canonical).toBe(`${base}/zh/about/`);
+    expect(zhSide.openGraph?.locale).toBe('zh');
     for (const md of [enSide, zhSide]) {
       expect(md.alternates?.languages).toEqual({
         en: `${base}/about/`,

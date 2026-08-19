@@ -62,7 +62,11 @@ export function createListingMetadata({
       count === 1 && descriptionOneKey ? t(descriptionOneKey) : tWith(descriptionKey, { count });
   }
 
-  return resolvedDescription !== undefined ? { title, description: resolvedDescription } : { title };
+  // og:locale so localized listings don't inherit the root layout's default.
+  const openGraph = { locale };
+  return resolvedDescription !== undefined
+    ? { title, description: resolvedDescription, openGraph }
+    : { title, openGraph };
 }
 
 /** Standard OpenGraph image dimensions, shared by every article route. */
@@ -134,6 +138,7 @@ export function buildArticleMetadata({
       title,
       description,
       type,
+      locale,
       ...(publishedTime ? { publishedTime } : {}),
       ...(authors ? { authors } : {}),
       ...(url ? { url } : {}),
