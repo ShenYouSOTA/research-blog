@@ -13,7 +13,8 @@ import NavDropdown, { type NavMenuItem } from './NavDropdown';
 import NavAccordion from './NavAccordion';
 import { useLanguage } from '@/components/LanguageProvider';
 import { resolveLocaleValue } from '@/lib/i18n';
-import { localizeUrl, splitLocaleFromPath, withTrailingSlash } from '@/lib/urls';
+import { splitLocaleFromPath } from '@/lib/urls';
+import { localeStickyHref } from '@/lib/locale-urls';
 import { TranslationKey } from '@/i18n/translations';
 
 interface NavItem {
@@ -61,12 +62,12 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
    * otherwise they fall back to the unprefixed surface. Dropdown entries link
    * default-tree entities and stay unprefixed on purpose.
    */
+  const localeConfig = {
+    locales: siteConfig.i18n.enabled ? siteConfig.i18n.locales : [],
+    defaultLocale: siteConfig.i18n.defaultLocale,
+  };
   function navHref(url: string): string {
-    if (language === siteConfig.i18n.defaultLocale) return url;
-    if (url === '/') {
-      return (twinnedPaths[language]?.length ?? 0) > 0 ? localizeUrl('/', language) : url;
-    }
-    return (twinnedPaths[language] ?? []).includes(withTrailingSlash(url)) ? localizeUrl(url, language) : url;
+    return localeStickyHref(url, language, twinnedPaths, localeConfig);
   }
 
   // Scroll-aware transparency
@@ -107,7 +108,7 @@ export default function Navbar({ seriesList = [], booksList = [] }: NavbarProps)
   const childItems = (children: NavChildItem[]): NavMenuItem[] =>
     children.map((child) => ({
       key: child.url,
-      href: child.url,
+      href: child.external ? child.url : navHref(child.url),
       label: getLabel(child.name, child.url),
       external: child.external,
       dividerBefore: child.dividerBefore,

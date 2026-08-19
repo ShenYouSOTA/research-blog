@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   delocalizePath,
   localeFromPathname,
+  localeStickyHref,
   localizePath,
   nextSwitchableLocale,
   nonDefaultLocales,
@@ -207,5 +208,26 @@ describe('nextSwitchableLocale (safe cycling)', () => {
 
   test('the default locale is always reachable', () => {
     expect(nextSwitchableLocale('zh', {}, EN_DEFAULT)).toBe('en');
+  });
+});
+
+describe('localeStickyHref (nav/footer chrome links)', () => {
+  const manifest = { zh: ['/', '/posts/', '/about/'] };
+
+  test('sticks to the locale when the target exists there', () => {
+    expect(localeStickyHref('/posts', 'zh', manifest, EN_DEFAULT)).toBe('/zh/posts');
+    expect(localeStickyHref('/about/', 'zh', manifest, EN_DEFAULT)).toBe('/zh/about/');
+    expect(localeStickyHref('/', 'zh', manifest, EN_DEFAULT)).toBe('/zh/');
+  });
+
+  test('falls back to the unprefixed surface when the locale lacks the target', () => {
+    expect(localeStickyHref('/archive', 'zh', manifest, EN_DEFAULT)).toBe('/archive');
+    expect(localeStickyHref('/tags', 'zh', manifest, EN_DEFAULT)).toBe('/tags');
+  });
+
+  test('identity on the default locale; external and file hrefs pass through', () => {
+    expect(localeStickyHref('/posts', 'en', manifest, EN_DEFAULT)).toBe('/posts');
+    expect(localeStickyHref('https://example.com/x', 'zh', manifest, EN_DEFAULT)).toBe('https://example.com/x');
+    expect(localeStickyHref('/feed.xml', 'zh', manifest, EN_DEFAULT)).toBe('/feed.xml');
   });
 });

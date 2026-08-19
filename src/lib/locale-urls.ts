@@ -62,6 +62,26 @@ export function localeFromPathname(pathname: string | null | undefined, config: 
 }
 
 /**
+ * Locale-sticky href for chrome links (nav, footer): on a non-default-locale
+ * page, an internal link stays in that locale when the target exists there
+ * (per the twin manifest), otherwise falls back to the unprefixed surface.
+ * External URLs, fragments, and non-path hrefs pass through untouched.
+ */
+export function localeStickyHref(
+  url: string,
+  currentLocale: string,
+  twinnedPaths: Record<string, string[]>,
+  config: LocalePathConfig,
+): string {
+  if (currentLocale === config.defaultLocale) return url;
+  if (!url.startsWith('/')) return url;
+  const normalized = url.endsWith('/') ? url : `${url}/`;
+  return (twinnedPaths[currentLocale] ?? []).includes(normalized)
+    ? localizePath(url, currentLocale, config)
+    : url;
+}
+
+/**
  * The next locale the language switch may cycle to. The default locale is
  * always reachable (its tree always exists); a non-default locale is only
  * switchable when it has manifest entries — cycling into an empty locale
