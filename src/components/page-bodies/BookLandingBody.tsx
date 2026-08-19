@@ -193,10 +193,13 @@ export default function BookLandingBody({ locale, bookSlug }: BookLandingBodyPro
         </div>
       </section>
 
-      {/* Book body content */}
+      {/* Book body content — assets live under the tree's public dir (zh/books/…) */}
       {book.content && (
         <section className="max-w-2xl mx-auto">
-          <MarkdownRenderer content={book.content} slug={`books/${book.slug}`} />
+          <MarkdownRenderer
+            content={book.content}
+            slug={`${locale === siteConfig.i18n.defaultLocale ? '' : `${locale}/`}books/${book.slug}`}
+          />
         </section>
       )}
       </div>
