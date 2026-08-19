@@ -334,97 +334,111 @@ export function localeDeepParams(): { slug: string; postSlug: string; rest: stri
 
 // ─── LanguageSwitch manifest ─────────────────────────────────────────────────
 
-/** Pagination pages (2..N) that exist in BOTH trees: min of the two page counts. Exported for tests. */
-export function sharedPageNumbers(defaultCount: number, localeCount: number, pageSize: number): number[] {
-  const pages = Math.min(Math.ceil(defaultCount / pageSize), Math.ceil(localeCount / pageSize));
-  return Array.from({ length: Math.max(0, pages - 1) }, (_, i) => i + 2);
+interface LocalePathSets {
+  /** Every unprefixed-form path that exists in this locale's tree/chrome. */
+  all: string[];
+  /** The subset whose default-tree counterpart also exists. */
+  twinnedWithDefault: string[];
 }
 
-const manifestMemo = createKeyedMemo<string, string[]>();
+const pathSetsMemo = createKeyedMemo<string, LocalePathSets>();
 
 /**
- * Unprefixed trailing-slash paths that exist in BOTH the default tree and the
- * given locale tree (true twins), plus the locale's chrome pages whose
- * unprefixed counterpart always exists. Intersection semantics are what make
- * resolveSwitchTarget correct in both directions: an entry means "this page
- * has a version in that locale AND unprefixed".
+ * Path sets for one non-default locale. `all` powers switching INTO the
+ * locale ("does the target have this page?") — including locale originals
+ * and twins between two non-default trees; `twinnedWithDefault` powers
+ * switching back to the default locale.
  */
-function twinnedPathsFor(locale: string): string[] {
-  return manifestMemo.get(locale, () => {
-    const paths = new Set<string>();
-    const add = (unprefixedUrl: string) => paths.add(withTrailingSlash(unprefixedUrl));
+function localePathSets(locale: string): LocalePathSets {
+  return pathSetsMemo.get(locale, () => {
+    const all = new Set<string>();
+    const twinned = new Set<string>();
+    const add = (unprefixedUrl: string, existsInDefault: boolean) => {
+      const path = withTrailingSlash(unprefixedUrl);
+      all.add(path);
+      if (existsInDefault) twinned.add(path);
+    };
 
-    if (hasLocaleContent(locale, 'any')) add('/');
+    // Chrome roots and pagination: this locale's side per its own gates and
+    // counts; the default side checked with the same gate/counts.
+    if (hasLocaleContent(locale, 'any')) add('/', hasLocaleContent(DEFAULT_LOCALE, 'any'));
     if (hasLocaleContent(locale, 'posts')) {
-      add(`/${getPostsBasePath()}`);
-      // Paginated listing twins: switching from /posts/page/2 lands on
-      // /zh/posts/page/2 only when both trees actually have a page 2.
-      for (const page of sharedPageNumbers(getListingPosts().length, getListingPosts(locale).length, POST_PAGE_SIZE)) {
-        add(`/${getPostsBasePath()}/page/${page}`);
-      }
+      add(`/${getPostsBasePath()}`, hasLocaleContent(DEFAULT_LOCALE, 'posts'));
+      const localePages = Math.ceil(getListingPosts(locale).length / POST_PAGE_SIZE);
+      const defaultPages = Math.ceil(getListingPosts().length / POST_PAGE_SIZE);
+      for (let i = 2; i <= localePages; i++) add(`/${getPostsBasePath()}/page/${i}`, i <= defaultPages);
     }
-    if (hasLocaleContent(locale, 'series')) add(getSeriesListUrl());
-    if (hasLocaleContent(locale, 'books')) add(getBooksListUrl());
+    if (hasLocaleContent(locale, 'series')) add(getSeriesListUrl(), hasLocaleContent(DEFAULT_LOCALE, 'series'));
+    if (hasLocaleContent(locale, 'books')) add(getBooksListUrl(), hasLocaleContent(DEFAULT_LOCALE, 'books'));
     if (hasLocaleContent(locale, 'notes')) {
-      add('/notes');
-      for (const page of sharedPageNumbers(getAllNotes().length, getAllNotes(locale).length, NOTES_PAGE_SIZE)) {
-        add(`/notes/page/${page}`);
-      }
+      add('/notes', hasLocaleContent(DEFAULT_LOCALE, 'notes'));
+      const localePages = Math.ceil(getAllNotes(locale).length / NOTES_PAGE_SIZE);
+      const defaultPages = Math.ceil(getAllNotes().length / NOTES_PAGE_SIZE);
+      for (let i = 2; i <= localePages; i++) add(`/notes/page/${i}`, i <= defaultPages);
     }
 
     for (const post of getAllPosts(locale)) {
-      const twin = getTwinPost(post, DEFAULT_LOCALE);
-      if (twin) add(getPostUrl(twin));
+      const { path } = splitLocaleFromPath(getPostUrl(post));
+      add(path, getTwinPost(post, DEFAULT_LOCALE) !== null);
     }
     for (const page of getAllPages(locale)) {
-      if (getTwinPage(page, DEFAULT_LOCALE)) add(getStaticPageUrl(page.slug));
+      add(getStaticPageUrl(page.slug), getTwinPage(page, DEFAULT_LOCALE) !== null);
     }
     if (kindEnabled('notes')) {
       for (const note of getAllNotes(locale)) {
-        if (getTwinNote(note, DEFAULT_LOCALE)) add(getNoteUrl(note.slug));
+        add(getNoteUrl(note.slug), getTwinNote(note, DEFAULT_LOCALE) !== null);
       }
     }
     for (const [seriesSlug, localePosts] of Object.entries(getAllSeries(locale))) {
-      if (getSeriesData(seriesSlug, DEFAULT_LOCALE)) {
-        const sharedPages = sharedPageNumbers(
-          getAllSeries(DEFAULT_LOCALE)[seriesSlug]?.length ?? 0,
-          localePosts.length,
-          SERIES_PAGE_SIZE,
-        );
-        if (kindEnabled('series')) {
-          add(getSeriesUrl(seriesSlug));
-          for (const page of sharedPages) add(`${getSeriesUrl(seriesSlug)}/page/${page}`);
+      const hasDefault = getSeriesData(seriesSlug, DEFAULT_LOCALE) !== null;
+      const localePages = Math.ceil(localePosts.length / SERIES_PAGE_SIZE);
+      const defaultPages = Math.ceil((getAllSeries(DEFAULT_LOCALE)[seriesSlug]?.length ?? 0) / SERIES_PAGE_SIZE);
+      if (kindEnabled('series')) {
+        add(getSeriesUrl(seriesSlug), hasDefault);
+        for (let i = 2; i <= localePages; i++) {
+          add(`${getSeriesUrl(seriesSlug)}/page/${i}`, hasDefault && i <= defaultPages);
         }
-        const prefix = seriesListingPrefixes(locale).find(p => p.seriesSlug === seriesSlug)?.prefix;
-        if (prefix) {
-          add(`/${prefix}`);
-          for (const page of sharedPages) add(`/${prefix}/page/${page}`);
+      }
+      const prefix = seriesListingPrefixes(locale).find(p => p.seriesSlug === seriesSlug)?.prefix;
+      if (prefix) {
+        add(`/${prefix}`, hasDefault);
+        for (let i = 2; i <= localePages; i++) {
+          add(`/${prefix}/page/${i}`, hasDefault && i <= defaultPages);
         }
       }
     }
     if (kindEnabled('books')) {
       for (const book of getAllBooks(locale)) {
         const twinBook = getBookData(book.slug, DEFAULT_LOCALE);
-        if (!twinBook) continue;
-        add(getBookUrl(book.slug));
-        const twinChapterIds = new Set(twinBook.chapters.map(ch => ch.id));
+        add(getBookUrl(book.slug), twinBook !== null);
+        const twinChapterIds = new Set(twinBook?.chapters.map(ch => ch.id) ?? []);
         for (const ch of book.chapters) {
-          if (twinChapterIds.has(ch.id)) add(getBookChapterUrl(book.slug, ch.id));
+          add(getBookChapterUrl(book.slug, ch.id), twinChapterIds.has(ch.id));
         }
       }
     }
 
-    return [...paths].sort();
+    return { all: [...all].sort(), twinnedWithDefault: [...twinned].sort() };
   });
 }
 
-/** Per-locale twin manifest for LanguageSwitch, passed through the root layout. */
+/**
+ * Per-locale switch manifest, passed through the root layout. Each
+ * non-default key lists the unprefixed-form paths EXISTING in that locale;
+ * the default-locale key lists the default-side paths reachable from any
+ * locale page (union of twinned sets). resolveSwitchTarget checks the
+ * TARGET's entry uniformly, which is what makes switching between two
+ * non-default locales work without a default-tree twin.
+ */
 export function getTwinnedPathManifest(): Record<string, string[]> {
   const manifest: Record<string, string[]> = {};
+  const defaultReachable = new Set<string>();
   for (const locale of getNonDefaultLocales()) {
-    const paths = twinnedPathsFor(locale);
-    if (paths.length > 0) manifest[locale] = paths;
+    const sets = localePathSets(locale);
+    if (sets.all.length > 0) manifest[locale] = sets.all;
+    for (const path of sets.twinnedWithDefault) defaultReachable.add(path);
   }
+  if (defaultReachable.size > 0) manifest[DEFAULT_LOCALE] = [...defaultReachable].sort();
   return manifest;
 }
 

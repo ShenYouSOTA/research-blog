@@ -8,10 +8,12 @@ import { buildFeatureOverrides } from '@/lib/i18n';
 import { localeFromPathname } from '@/lib/locale-urls';
 
 /**
- * Unprefixed, trailing-slash page paths that exist in each non-default
- * locale (content twins plus the locale's chrome pages), computed on the
- * server and passed down through the root layout. LanguageSwitch uses it to
- * decide between "navigate to the twin" and "fall back to the locale home".
+ * Per-locale switch manifest, computed on the server and passed down through
+ * the root layout: each non-default locale maps to the unprefixed-form paths
+ * that EXIST in it (content, chrome, pagination); the default locale maps to
+ * the default-side paths reachable from any locale page. LanguageSwitch
+ * checks the TARGET's entry to decide between "navigate to this page's
+ * version there" and "fall back to that locale's home".
  */
 export type TwinnedPathManifest = Record<string, string[]>;
 

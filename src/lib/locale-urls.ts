@@ -104,12 +104,13 @@ export function nextSwitchableLocale(
 }
 
 /**
- * Where the language switch should navigate: the current page's twin in the
- * target locale when one exists, otherwise the target locale's home.
- * `twinnedPaths` maps each non-default locale to the unprefixed trailing-slash
- * paths that exist in it (content twins plus that locale's chrome pages).
- * Twin-ness is symmetric, so switching back to the default locale checks the
- * CURRENT locale's manifest.
+ * Where the language switch should navigate: the current page's version in
+ * the target locale when one exists there, otherwise the target's home.
+ * `twinnedPaths` maps each non-default locale to the unprefixed-form paths
+ * that EXIST in it, and the default locale to the default-side paths
+ * reachable from any locale page. Checking the TARGET's entry uniformly is
+ * what makes switching between two non-default locales work without a
+ * default-tree twin.
  */
 export function resolveSwitchTarget(
   pathname: string | null | undefined,
@@ -120,10 +121,6 @@ export function resolveSwitchTarget(
 ): string {
   const unprefixed = delocalizePath(pathname || '/', config);
   const current = unprefixed.endsWith('/') ? unprefixed : `${unprefixed}/`;
-  if (targetLocale === config.defaultLocale) {
-    const exists = (twinnedPaths[currentLocale] ?? []).includes(current);
-    return exists ? current : '/';
-  }
   const exists = (twinnedPaths[targetLocale] ?? []).includes(current);
   return localizePath(exists ? current : '/', targetLocale, config);
 }

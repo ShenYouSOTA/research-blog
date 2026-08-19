@@ -10,10 +10,10 @@
 import fs from 'fs';
 import path from 'path';
 import { getSeriesData } from '../src/lib/content/series';
-import { getAllPosts, getTwinPost } from '../src/lib/content/posts';
-import { getAllNotes, getTwinNote } from '../src/lib/content/notes';
+import { getAllPosts, getPostsWithLocaleOriginals } from '../src/lib/content/posts';
+import { getAllNotes, getNotesWithLocaleOriginals } from '../src/lib/content/notes';
 import { getAllFlows } from '../src/lib/content/flows';
-import { getNonDefaultLocales, getNoteUrl, getPostUrl, localizeUrl } from '../src/lib/urls';
+import { getNoteUrl, getPostUrl, localizeUrl } from '../src/lib/urls';
 import { siteConfig } from '../site.config';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
@@ -66,16 +66,12 @@ async function main() {
   // its canonical node. These docs join the outgoing-wikilink scan but are
   // deliberately NOT registered in slugToId, so default-tree node ids and
   // edge targets stay byte-identical.
-  const localePostDocs = getNonDefaultLocales().flatMap(locale =>
-    getAllPosts(locale)
-      .filter(p => !getTwinPost(p, DEFAULT_LOCALE))
-      .map(p => ({ slug: p.slug, title: p.title, type: 'post' as const, content: p.content, url: getPostUrl(p) }))
-  );
-  const localeNoteDocs = getNonDefaultLocales().flatMap(locale =>
-    getAllNotes(locale)
-      .filter(n => !getTwinNote(n, DEFAULT_LOCALE))
-      .map(n => ({ slug: n.slug, title: n.title, type: 'note' as const, content: n.content, url: localizeUrl(getNoteUrl(n.slug), locale) }))
-  );
+  const localePostDocs = getPostsWithLocaleOriginals()
+    .filter(p => p.locale !== DEFAULT_LOCALE)
+    .map(p => ({ slug: p.slug, title: p.title, type: 'post' as const, content: p.content, url: getPostUrl(p) }));
+  const localeNoteDocs = getNotesWithLocaleOriginals()
+    .filter(n => n.locale !== DEFAULT_LOCALE)
+    .map(n => ({ slug: n.slug, title: n.title, type: 'note' as const, content: n.content, url: localizeUrl(getNoteUrl(n.slug), n.locale) }));
 
   // Wikilink targets are bare slugs; map each to a node id. Duplicate post slugs
   // are legal, so last-wins here matches the app's wikilink registry.

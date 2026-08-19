@@ -92,7 +92,12 @@ describe('locale-urls pure helpers', () => {
 });
 
 describe('resolveSwitchTarget (LanguageSwitch navigation core)', () => {
-  const manifest = { zh: ['/about/', '/posts/foo/', '/posts/', '/'] };
+  // zh entry: paths existing in the zh tree (originals included);
+  // en entry: default-side paths reachable from a locale page (twins/chrome).
+  const manifest = {
+    zh: ['/about/', '/posts/foo/', '/posts/', '/', '/posts/zh-original-demo/'],
+    en: ['/about/', '/posts/foo/', '/posts/', '/'],
+  };
 
   test('en page with a zh twin → the zh twin', () => {
     expect(resolveSwitchTarget('/about/', 'en', 'zh', manifest, EN_DEFAULT)).toBe('/zh/about/');
@@ -111,13 +116,23 @@ describe('resolveSwitchTarget (LanguageSwitch navigation core)', () => {
     expect(resolveSwitchTarget('/zh/posts/zh-original-demo/', 'zh', 'en', manifest, EN_DEFAULT)).toBe('/');
   });
 
+  test('twins between two NON-default locales switch directly', () => {
+    // zh/fr share a path with no default-tree side (second review, finding 6).
+    const threeLocales = { locales: ['en', 'zh', 'fr'], defaultLocale: 'en' };
+    const pairManifest = { zh: ['/posts/shared/', '/'], fr: ['/posts/shared/', '/'] };
+    expect(resolveSwitchTarget('/zh/posts/shared/', 'zh', 'fr', pairManifest, threeLocales)).toBe('/fr/posts/shared/');
+    expect(resolveSwitchTarget('/fr/posts/shared/', 'fr', 'zh', pairManifest, threeLocales)).toBe('/zh/posts/shared/');
+    // …and back to the default falls to home: no en side exists.
+    expect(resolveSwitchTarget('/zh/posts/shared/', 'zh', 'en', pairManifest, threeLocales)).toBe('/');
+  });
+
   test('null pathname and empty manifest degrade to homes', () => {
     expect(resolveSwitchTarget(null, 'en', 'zh', {}, EN_DEFAULT)).toBe('/zh/');
     expect(resolveSwitchTarget(null, 'zh', 'en', {}, EN_DEFAULT)).toBe('/');
   });
 
   test('defaultLocale-agnostic: zh-default site switching to en', () => {
-    const zhManifest = { en: ['/about/'] };
+    const zhManifest = { en: ['/about/'], zh: ['/about/'] };
     expect(resolveSwitchTarget('/about/', 'zh', 'en', zhManifest, ZH_DEFAULT)).toBe('/en/about/');
     expect(resolveSwitchTarget('/en/about/', 'en', 'zh', zhManifest, ZH_DEFAULT)).toBe('/about/');
     expect(resolveSwitchTarget('/en/original/', 'en', 'zh', zhManifest, ZH_DEFAULT)).toBe('/');

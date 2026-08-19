@@ -124,19 +124,34 @@ describe('hasLocaleContent gates', () => {
 });
 
 describe('getTwinnedPathManifest', () => {
-  test('contains true twins and chrome, never one-sided pages', () => {
+  test('locale entries list what EXISTS in that locale, originals included', () => {
     const manifest = getTwinnedPathManifest();
     const zh = manifest.zh ?? [];
-    for (const expected of ['/', '/posts/', '/series/', '/about/', '/links/', '/privacy/', '/posts/i18n-routing-considerations/']) {
+    for (const expected of [
+      '/', '/posts/', '/series/', '/about/', '/links/', '/privacy/',
+      '/posts/i18n-routing-considerations/',
+      // Originals exist in zh — switching INTO zh from these paths is
+      // unreachable from en, but the entries make zh↔zh checks uniform.
+      '/posts/zh-original-demo/', '/series/zh-demo-series/', '/zh-demo-series/',
+    ]) {
       expect(zh).toContain(expected);
     }
-    // zh-originals have no default-tree side; default-only content has no zh side.
-    expect(zh).not.toContain('/posts/zh-original-demo/');
-    expect(zh).not.toContain('/series/zh-demo-series/');
-    expect(zh).not.toContain('/zh-demo-series/');
+    // Nothing the zh tree lacks.
     expect(zh).not.toContain('/books/');
     expect(zh).not.toContain('/notes/');
     expect(zh).not.toContain('/subscribe/');
+  });
+
+  test('the default-locale entry lists only default-side paths reachable from a locale page', () => {
+    const manifest = getTwinnedPathManifest();
+    const en = manifest.en ?? [];
+    for (const expected of ['/', '/posts/', '/series/', '/about/', '/links/', '/privacy/', '/posts/i18n-routing-considerations/']) {
+      expect(en).toContain(expected);
+    }
+    // zh-originals have no default side — switching back falls to the home.
+    expect(en).not.toContain('/posts/zh-original-demo/');
+    expect(en).not.toContain('/series/zh-demo-series/');
+    expect(en).not.toContain('/zh-demo-series/');
   });
 });
 

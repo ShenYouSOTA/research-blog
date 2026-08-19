@@ -174,12 +174,18 @@ export function getPostsWithLocaleOriginals(): PostData[] {
     const nonDefault = siteConfig.i18n.enabled
       ? siteConfig.i18n.locales.filter(locale => locale !== DEFAULT_LOCALE)
       : [];
-    return [
-      ...getAllPosts(),
-      ...nonDefault.flatMap(locale =>
-        getAllPosts(locale).filter(post => !getTwinPost(post, DEFAULT_LOCALE))
-      ),
-    ].sort(byDateDesc);
+    // First occurrence by treePath in [default, …locales] order: a twin pair
+    // between two NON-default trees (no default side) must still count once.
+    const seen = new Set(getAllPosts().map(post => post.treePath));
+    const result = [...getAllPosts()];
+    for (const locale of nonDefault) {
+      for (const post of getAllPosts(locale)) {
+        if (seen.has(post.treePath)) continue;
+        seen.add(post.treePath);
+        result.push(post);
+      }
+    }
+    return result.sort(byDateDesc);
   });
 }
 
