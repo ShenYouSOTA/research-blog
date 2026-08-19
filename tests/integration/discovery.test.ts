@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { getAllTags, buildSlugRegistry, getBacklinks } from '../../src/lib/content/discovery';
 import { getAggregatedPostsByTag, getAllPosts, getPostsByTag } from '../../src/lib/content/posts';
-import { getAllNotes, getNotesByTag } from '../../src/lib/content/notes';
+import { getAggregatedNotesByTag, getAllNotes, getNotesByTag } from '../../src/lib/content/notes';
 import { getAllFlows, getFlowsByTag } from '../../src/lib/content/flows';
 import { getPostUrl } from '../../src/lib/urls';
 
@@ -175,7 +175,7 @@ describe('Integration: discovery (slug registry, backlinks, tags)', () => {
       // (default ∪ locale-original) domain, matching getAllTags' own domain.
       for (const tag of Object.keys(getAllTags())) {
         const total =
-          getAggregatedPostsByTag(tag).length + getFlowsByTag(tag).length + getNotesByTag(tag).length;
+          getAggregatedPostsByTag(tag).length + getFlowsByTag(tag).length + getAggregatedNotesByTag(tag).length;
         expect(total).toBeGreaterThan(0);
       }
     });

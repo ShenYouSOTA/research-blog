@@ -6,7 +6,7 @@ import { domainDir } from './io';
 import { createMemo, createProdKeyedMemo } from './cache';
 import { getAllPosts, getPostsWithLocaleOriginals } from './posts';
 import { getAllFlows } from './flows';
-import { getAllNotes } from './notes';
+import { getAllNotes, getNotesWithLocaleOriginals } from './notes';
 import { getSeriesData } from './series';
 
 const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
@@ -24,7 +24,7 @@ export function getAllTags(): Record<string, number> {
   return allTagsMemo.get(() => {
     const allPosts = getPostsWithLocaleOriginals();
     const allFlows = getAllFlows();
-    const allNotes = getAllNotes();
+    const allNotes = getNotesWithLocaleOriginals();
 
     // counts keyed by lowercase for deduplication; display preserves first-seen casing
     const counts: Record<string, number> = {};

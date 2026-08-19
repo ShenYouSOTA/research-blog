@@ -162,6 +162,41 @@ export function getNotesByTag(tag: string, locale: string = DEFAULT_LOCALE): Not
   );
 }
 
+// ─── cross-tree aggregation ──────────────────────────────────────────────────
+
+const aggregatedNotesMemo = createProdKeyedMemo<string, NoteData[]>();
+
+/**
+ * The default tree plus every locale tree's ORIGINAL notes, deduplicated by
+ * treePath in [default, …locales] order so a twin (in any pair of trees)
+ * counts once. Mirrors posts.getPostsWithLocaleOriginals — the shared domain
+ * for the global taxonomy surfaces.
+ */
+export function getNotesWithLocaleOriginals(): NoteData[] {
+  return aggregatedNotesMemo.get('all', () => {
+    const nonDefault = siteConfig.i18n.enabled
+      ? siteConfig.i18n.locales.filter(locale => locale !== DEFAULT_LOCALE)
+      : [];
+    const seen = new Set(getAllNotes().map(note => note.treePath));
+    const result = [...getAllNotes()];
+    for (const locale of nonDefault) {
+      for (const note of getAllNotes(locale)) {
+        if (seen.has(note.treePath)) continue;
+        seen.add(note.treePath);
+        result.push(note);
+      }
+    }
+    return result.sort(byDateDesc);
+  });
+}
+
+/** Tag lookup over the aggregated (default ∪ originals) note domain — for the global /tags pages. */
+export function getAggregatedNotesByTag(tag: string): NoteData[] {
+  return getNotesWithLocaleOriginals().filter(note =>
+    note.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
+  );
+}
+
 // ─── twin lookups across locale trees ────────────────────────────────────────
 
 /** Locales (including the note's own) whose tree contains a note with the same treePath. */

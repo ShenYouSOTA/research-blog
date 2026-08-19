@@ -1,7 +1,7 @@
 import { getAllTags } from '@/lib/content/discovery';
 import { getAggregatedPostsByTag } from '@/lib/content/posts';
 import { getFlowsByTag } from '@/lib/content/flows';
-import { getNotesByTag } from '@/lib/content/notes';
+import { getAggregatedNotesByTag } from '@/lib/content/notes';
 import { isFeatureEnabled } from '@/lib/features';
 import { notFound } from 'next/navigation';
 import { siteConfig } from '../../../../site.config';
@@ -38,7 +38,7 @@ function resolveTagParam(rawTag: string) {
   return resolveFromParam(rawTag, (candidate) => {
     const posts = getAggregatedPostsByTag(candidate);
     const flows = flowEnabled ? getFlowsByTag(candidate) : [];
-    const notes = flowEnabled ? getNotesByTag(candidate) : [];
+    const notes = flowEnabled ? getAggregatedNotesByTag(candidate) : [];
     return posts.length + flows.length + notes.length > 0
       ? { tag: candidate, posts, flows, notes }
       : null;
