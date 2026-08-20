@@ -99,6 +99,20 @@ describe('detail-route metadata: canonical split + hreflang', () => {
   });
 });
 
+describe('localized detail pages carry entity-specific OpenGraph', () => {
+  test('zh series landing mirrors the unprefixed landing: og:url, type, locale, image', async () => {
+    const md = await deepMetadata({
+      params: Promise.resolve({ slug: 'zh', postSlug: 'series', rest: ['zh-demo-series'] }),
+    });
+    expect(md.openGraph?.locale).toBe('zh');
+    expect(md.openGraph && 'type' in md.openGraph && md.openGraph.type).toBe('website');
+    expect(md.openGraph?.url).toBe(`${base}/zh/series/zh-demo-series/`);
+    expect(md.openGraph && 'images' in md.openGraph && md.openGraph.images).toBeTruthy();
+    expect(md.openGraph?.siteName).toBeTruthy();
+    expect(md.alternates?.canonical).toBe(`${base}/zh/series/zh-demo-series/`);
+  });
+});
+
 describe('book/chapter locale sets (no zh book fixtures: single-locale)', () => {
   test('default-tree books resolve to a single-locale set → no languages block', () => {
     const books = getAllBooks();

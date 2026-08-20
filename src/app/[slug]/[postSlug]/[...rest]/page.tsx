@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { siteConfig } from '../../../../../site.config';
 import { resolveImageUrl } from '@/lib/json-ld';
-import { getBookChapterUrl, getBookUrl, getNoteUrl, getPostUrl, getPostsBasePath, isNonDefaultLocale, localizeUrl } from '@/lib/urls';
+import { getBookChapterUrl, getBookUrl, getNoteUrl, getPostUrl, getPostsBasePath, getSeriesUrl, isNonDefaultLocale, localizeUrl, withTrailingSlash } from '@/lib/urls';
 import { buildArticleMetadata , siteOpenGraph } from '@/lib/metadata';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import RenderPostPage from '@/components/RenderPostPage';
@@ -89,11 +89,24 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       const pageSuffix = resolution.page > 1
         ? ` - ${tWith('page_of_total', { page: resolution.page, total: totalPages })}`
         : '';
-      return {
-        title: `${seriesData.title}${pageSuffix} - ${t('series')} | ${siteTitle}`,
+      // Entity OG mirrors the unprefixed series landing: cover image, og:url,
+      // per-cover twitter card.
+      const ogImage = resolveImageUrl(seriesData.coverImage, siteConfig.ogImage, siteUrl);
+      const defaultOgImage = resolveImageUrl(undefined, siteConfig.ogImage, siteUrl);
+      const landingUrl = withTrailingSlash(
+        `${siteUrl}${localizeUrl(getSeriesUrl(resolution.seriesSlug), locale)}`
+      );
+      return buildArticleMetadata({
+        locale,
+        title: seriesData.title,
+        titleSuffix: `${pageSuffix} - ${t('series')}`,
         description: seriesData.excerpt,
-        openGraph: siteOpenGraph(locale),
-      };
+        type: 'website',
+        url: landingUrl,
+        ...(resolution.page === 1 ? { canonicalUrl: landingUrl } : {}),
+        ogImage,
+        twitterCard: ogImage !== defaultOgImage ? 'summary_large_image' : 'summary',
+      });
     }
     case 'postsListing':
       return { title: `${t('posts')} | ${siteTitle}`, description: t('posts_description'), openGraph: siteOpenGraph(locale) };
@@ -104,28 +117,53 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
         localizeUrl(getBookUrl(resolution.book.slug), locale),
         bookContentLocales(resolution.book.slug)
       );
-      return {
-        title: `${resolution.book.title} | ${siteTitle}`,
+      const ogImage = resolveImageUrl(resolution.book.coverImage, siteConfig.ogImage, siteUrl);
+      const defaultOgImage = resolveImageUrl(undefined, siteConfig.ogImage, siteUrl);
+      return buildArticleMetadata({
+        locale,
+        title: resolution.book.title,
         description: resolution.book.excerpt,
-        openGraph: siteOpenGraph(locale),
-        alternates: {
-          canonical: seo.canonicalUrl,
-          ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
-        },
-      };
+        type: 'website',
+        url: seo.canonicalUrl,
+        canonicalUrl: seo.canonicalUrl,
+        languageAlternates: seo.languageAlternates,
+        ogImage,
+        twitterCard: ogImage !== defaultOgImage ? 'summary_large_image' : 'summary',
+      });
     }
     case 'chapter': {
       const seo = contentSeoUrls(
         localizeUrl(getBookChapterUrl(resolution.book.slug, resolution.chapter.slug), locale),
         chapterContentLocales(resolution.book.slug, resolution.chapter.slug)
       );
+      const chapterOgTitle = `${resolution.chapter.title} - ${resolution.book.title}`;
+      const ogImage =
+        resolution.book.coverImage &&
+        !resolution.book.coverImage.startsWith('text:') &&
+        !resolution.book.coverImage.startsWith('./')
+          ? resolution.book.coverImage
+          : siteConfig.ogImage;
       return {
-        title: `${resolution.chapter.title} - ${resolution.book.title} | ${siteTitle}`,
+        title: `${chapterOgTitle} | ${siteTitle}`,
         description: resolution.chapter.excerpt,
-        openGraph: siteOpenGraph(locale),
         alternates: {
           canonical: seo.canonicalUrl,
           ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
+        },
+        openGraph: {
+          title: chapterOgTitle,
+          description: resolution.chapter.excerpt,
+          type: 'article',
+          url: seo.canonicalUrl,
+          siteName: siteTitle,
+          locale,
+          images: [{ url: ogImage, width: 1200, height: 630, alt: resolution.chapter.title }],
+        },
+        twitter: {
+          card: ogImage !== siteConfig.ogImage ? 'summary_large_image' : 'summary',
+          title: chapterOgTitle,
+          description: resolution.chapter.excerpt,
+          images: [ogImage],
         },
       };
     }
