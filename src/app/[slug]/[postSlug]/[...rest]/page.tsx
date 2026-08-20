@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { siteConfig } from '../../../../../site.config';
 import { resolveImageUrl } from '@/lib/json-ld';
 import { getBookChapterUrl, getBookUrl, getNoteUrl, getPostUrl, getPostsBasePath, isNonDefaultLocale, localizeUrl } from '@/lib/urls';
-import { buildArticleMetadata } from '@/lib/metadata';
+import { buildArticleMetadata , siteOpenGraph } from '@/lib/metadata';
 import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import RenderPostPage from '@/components/RenderPostPage';
 import PostsListingBody from '@/components/page-bodies/PostsListingBody';
@@ -92,13 +92,13 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return {
         title: `${seriesData.title}${pageSuffix} - ${t('series')} | ${siteTitle}`,
         description: seriesData.excerpt,
-        openGraph: { locale },
+        openGraph: siteOpenGraph(locale),
       };
     }
     case 'postsListing':
-      return { title: `${t('posts')} | ${siteTitle}`, description: t('posts_description'), openGraph: { locale } };
+      return { title: `${t('posts')} | ${siteTitle}`, description: t('posts_description'), openGraph: siteOpenGraph(locale) };
     case 'notesListing':
-      return { title: `${t('notes')} | ${siteTitle}`, openGraph: { locale } };
+      return { title: `${t('notes')} | ${siteTitle}`, openGraph: siteOpenGraph(locale) };
     case 'book': {
       const seo = contentSeoUrls(
         localizeUrl(getBookUrl(resolution.book.slug), locale),
@@ -107,7 +107,7 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return {
         title: `${resolution.book.title} | ${siteTitle}`,
         description: resolution.book.excerpt,
-        openGraph: { locale },
+        openGraph: siteOpenGraph(locale),
         alternates: {
           canonical: seo.canonicalUrl,
           ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),
@@ -122,7 +122,7 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
       return {
         title: `${resolution.chapter.title} - ${resolution.book.title} | ${siteTitle}`,
         description: resolution.chapter.excerpt,
-        openGraph: { locale },
+        openGraph: siteOpenGraph(locale),
         alternates: {
           canonical: seo.canonicalUrl,
           ...(seo.languageAlternates ? { languages: seo.languageAlternates } : {}),

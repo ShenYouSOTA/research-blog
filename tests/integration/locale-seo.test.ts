@@ -85,6 +85,10 @@ describe('detail-route metadata: canonical split + hreflang', () => {
     expect(enSide.alternates?.canonical).toBe(`${base}/about/`);
     expect(zhSide.alternates?.canonical).toBe(`${base}/zh/about/`);
     expect(zhSide.openGraph?.locale).toBe('zh');
+    // A page-level openGraph REPLACES the layout's — the override must carry
+    // the full set, not just the locale (third review, finding 1).
+    expect(zhSide.openGraph?.siteName).toBeTruthy();
+    expect(zhSide.openGraph && 'images' in zhSide.openGraph && zhSide.openGraph.images).toBeTruthy();
     for (const md of [enSide, zhSide]) {
       expect(md.alternates?.languages).toEqual({
         en: `${base}/about/`,

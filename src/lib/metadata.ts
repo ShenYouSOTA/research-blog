@@ -62,8 +62,9 @@ export function createListingMetadata({
       count === 1 && descriptionOneKey ? t(descriptionOneKey) : tWith(descriptionKey, { count });
   }
 
-  // og:locale so localized listings don't inherit the root layout's default.
-  const openGraph = { locale };
+  // Full OG set with the listing's locale — a partial override would drop
+  // og:site_name/og:type/og:image (Next replaces, not merges, openGraph).
+  const openGraph = siteOpenGraph(locale);
   return resolvedDescription !== undefined
     ? { title, description: resolvedDescription, openGraph }
     : { title, openGraph };
@@ -72,6 +73,21 @@ export function createListingMetadata({
 /** Standard OpenGraph image dimensions, shared by every article route. */
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
+
+/**
+ * The site-level OpenGraph object with a per-locale siteName and locale —
+ * for pages that override openGraph. Next.js REPLACES a parent's openGraph
+ * object instead of merging it, so any page-level override must re-supply
+ * the full set or lose og:site_name / og:type / og:image.
+ */
+export function siteOpenGraph(locale: string): NonNullable<Metadata['openGraph']> {
+  return {
+    siteName: resolveLocaleValue(siteConfig.title, locale),
+    locale,
+    type: 'website',
+    images: [{ url: siteConfig.ogImage, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT }],
+  };
+}
 
 interface ArticleMetadataOptions {
   /** Locale the site title resolves in. */
