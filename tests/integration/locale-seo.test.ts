@@ -100,6 +100,17 @@ describe('detail-route metadata: canonical split + hreflang', () => {
 });
 
 describe('localized detail pages carry entity-specific OpenGraph', () => {
+  test('the auto-prefix landing gets the same entity treatment as /zh/series/<slug>', async () => {
+    const md = await secondLevelMetadata({
+      params: Promise.resolve({ slug: 'zh', postSlug: 'zh-demo-series' }),
+    });
+    expect(md.openGraph?.locale).toBe('zh');
+    expect(md.openGraph?.url).toBe(`${base}/zh/zh-demo-series/`);
+    expect(md.alternates?.canonical).toBe(`${base}/zh/zh-demo-series/`);
+    expect(md.openGraph?.siteName).toBeTruthy();
+    expect(md.openGraph && 'images' in md.openGraph && md.openGraph.images).toBeTruthy();
+  });
+
   test('zh series landing mirrors the unprefixed landing: og:url, type, locale, image', async () => {
     const md = await deepMetadata({
       params: Promise.resolve({ slug: 'zh', postSlug: 'series', rest: ['zh-demo-series'] }),

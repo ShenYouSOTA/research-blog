@@ -70,11 +70,23 @@ function localizedMetadata(locale: string, resolution: LocalizedResolution): Met
     case 'seriesPrefixListing': {
       const seriesData = getSeriesData(resolution.seriesSlug, locale);
       if (!seriesData) return { title: 'Page Not Found' };
-      return {
-        title: `${seriesData.title} - ${t('series')} | ${resolveLocaleValue(siteConfig.title, locale)}`,
+      // Entity OG like the /zh/series/<slug> landing — same series, same
+      // treatment, just the prefix URL form.
+      const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
+      const ogImage = resolveImageUrl(seriesData.coverImage, siteConfig.ogImage, siteUrl);
+      const defaultOgImage = resolveImageUrl(undefined, siteConfig.ogImage, siteUrl);
+      const landingUrl = withTrailingSlash(`${siteUrl}${localizeUrl(`/${resolution.prefix}`, locale)}`);
+      return buildArticleMetadata({
+        locale,
+        title: seriesData.title,
+        titleSuffix: ` - ${t('series')}`,
         description: seriesData.excerpt,
-        openGraph: siteOpenGraph(locale),
-      };
+        type: 'website',
+        url: landingUrl,
+        canonicalUrl: landingUrl,
+        ogImage,
+        twitterCard: ogImage !== defaultOgImage ? 'summary_large_image' : 'summary',
+      });
     }
     default:
       return { title: 'Page Not Found' };

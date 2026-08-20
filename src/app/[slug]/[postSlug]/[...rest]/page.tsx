@@ -90,20 +90,24 @@ export async function generateMetadata({ params }: { params: DeepParams }): Prom
         ? ` - ${tWith('page_of_total', { page: resolution.page, total: totalPages })}`
         : '';
       // Entity OG mirrors the unprefixed series landing: cover image, og:url,
-      // per-cover twitter card.
+      // per-cover twitter card. The URL reflects the ACTUAL route variant
+      // (/series/<s> vs /<prefix>) and page number — a paginated page must
+      // not identify itself as page 1.
       const ogImage = resolveImageUrl(seriesData.coverImage, siteConfig.ogImage, siteUrl);
       const defaultOgImage = resolveImageUrl(undefined, siteConfig.ogImage, siteUrl);
-      const landingUrl = withTrailingSlash(
-        `${siteUrl}${localizeUrl(getSeriesUrl(resolution.seriesSlug), locale)}`
-      );
+      const landingPath = resolution.kind === 'seriesPrefixListing'
+        ? `/${resolution.prefix}`
+        : getSeriesUrl(resolution.seriesSlug);
+      const pagePath = resolution.page > 1 ? `${landingPath}/page/${resolution.page}` : landingPath;
+      const pageUrl = withTrailingSlash(`${siteUrl}${localizeUrl(pagePath, locale)}`);
       return buildArticleMetadata({
         locale,
         title: seriesData.title,
         titleSuffix: `${pageSuffix} - ${t('series')}`,
         description: seriesData.excerpt,
         type: 'website',
-        url: landingUrl,
-        ...(resolution.page === 1 ? { canonicalUrl: landingUrl } : {}),
+        url: pageUrl,
+        canonicalUrl: pageUrl,
         ogImage,
         twitterCard: ogImage !== defaultOgImage ? 'summary_large_image' : 'summary',
       });
