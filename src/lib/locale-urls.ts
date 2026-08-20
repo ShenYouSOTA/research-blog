@@ -75,9 +75,13 @@ export function localeStickyHref(
 ): string {
   if (currentLocale === config.defaultLocale) return url;
   if (!url.startsWith('/')) return url;
-  const normalized = url.endsWith('/') ? url : `${url}/`;
+  // Match the manifest on the pathname only; query/fragment ride along.
+  const suffixStart = url.search(/[?#]/);
+  const pathPart = suffixStart === -1 ? url : url.slice(0, suffixStart);
+  const suffix = suffixStart === -1 ? '' : url.slice(suffixStart);
+  const normalized = pathPart.endsWith('/') ? pathPart : `${pathPart}/`;
   return (twinnedPaths[currentLocale] ?? []).includes(normalized)
-    ? localizePath(url, currentLocale, config)
+    ? `${localizePath(pathPart, currentLocale, config)}${suffix}`
     : url;
 }
 

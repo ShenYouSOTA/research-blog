@@ -245,4 +245,10 @@ describe('localeStickyHref (nav/footer chrome links)', () => {
     expect(localeStickyHref('https://example.com/x', 'zh', manifest, EN_DEFAULT)).toBe('https://example.com/x');
     expect(localeStickyHref('/feed.xml', 'zh', manifest, EN_DEFAULT)).toBe('/feed.xml');
   });
+
+  test('query strings and fragments ride along on the pathname match', () => {
+    expect(localeStickyHref('/about#team', 'zh', manifest, EN_DEFAULT)).toBe('/zh/about#team');
+    expect(localeStickyHref('/posts?tag=x', 'zh', manifest, EN_DEFAULT)).toBe('/zh/posts?tag=x');
+    expect(localeStickyHref('/archive#top', 'zh', manifest, EN_DEFAULT)).toBe('/archive#top');
+  });
 });
