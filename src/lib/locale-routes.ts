@@ -359,19 +359,22 @@ function localePathSets(locale: string): LocalePathSets {
       if (existsInDefault) twinned.add(path);
     };
 
-    // Chrome roots and pagination: this locale's side per its own gates and
-    // counts; the default side checked with the same gate/counts.
-    if (hasLocaleContent(locale, 'any')) add('/', hasLocaleContent(DEFAULT_LOCALE, 'any'));
+    // Chrome roots: this locale's side per its own gates; the DEFAULT side is
+    // route existence — /posts, /series etc. are static routes that exist
+    // (possibly empty) whenever their feature is enabled, even on a
+    // locale-only site with an empty default tree. Pagination stays
+    // content-driven on both sides.
+    if (hasLocaleContent(locale, 'any')) add('/', true);
     if (hasLocaleContent(locale, 'posts')) {
-      add(`/${getPostsBasePath()}`, hasLocaleContent(DEFAULT_LOCALE, 'posts'));
+      add(`/${getPostsBasePath()}`, true);
       const localePages = Math.ceil(getListingPosts(locale).length / POST_PAGE_SIZE);
       const defaultPages = Math.ceil(getListingPosts().length / POST_PAGE_SIZE);
       for (let i = 2; i <= localePages; i++) add(`/${getPostsBasePath()}/page/${i}`, i <= defaultPages);
     }
-    if (hasLocaleContent(locale, 'series')) add(getSeriesListUrl(), hasLocaleContent(DEFAULT_LOCALE, 'series'));
-    if (hasLocaleContent(locale, 'books')) add(getBooksListUrl(), hasLocaleContent(DEFAULT_LOCALE, 'books'));
+    if (hasLocaleContent(locale, 'series')) add(getSeriesListUrl(), kindEnabled('series'));
+    if (hasLocaleContent(locale, 'books')) add(getBooksListUrl(), kindEnabled('books'));
     if (hasLocaleContent(locale, 'notes')) {
-      add('/notes', hasLocaleContent(DEFAULT_LOCALE, 'notes'));
+      add('/notes', kindEnabled('notes'));
       const localePages = Math.ceil(getAllNotes(locale).length / NOTES_PAGE_SIZE);
       const defaultPages = Math.ceil(getAllNotes().length / NOTES_PAGE_SIZE);
       for (let i = 2; i <= localePages; i++) add(`/notes/page/${i}`, i <= defaultPages);
