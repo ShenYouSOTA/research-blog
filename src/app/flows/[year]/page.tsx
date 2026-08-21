@@ -6,10 +6,13 @@ import { siteConfig } from '../../../../site.config';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { t, tWith, resolveLocale } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import PageHeader from '@/components/PageHeader';
 import FlowIndexClient from '@/components/FlowIndexClient';
 import FlowStream from '@/components/FlowStream';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t, tWith } = getTranslator(DEFAULT_LOCALE);
 
 export function generateStaticParams() {
   if (!isFeatureEnabled('flow')) return [{ year: '_' }];
@@ -24,7 +27,7 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: { params: Promise<{ year: string }> }): Promise<Metadata> {
   const { year } = await params;
   return {
-    title: `${tWith('flows_in_year', { year })} | ${resolveLocale(siteConfig.title)}`,
+    title: `${tWith('flows_in_year', { year })} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
   };
 }
 

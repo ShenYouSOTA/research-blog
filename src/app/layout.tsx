@@ -11,10 +11,13 @@ import BrowserDetectionBanner from "@/components/BrowserDetectionBanner";
 import { siteConfig } from "@/lib/config-schema";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { getTwinnedPathManifest } from "@/lib/locale-routes";
 import { getAllSeries, getSeriesData } from '@/lib/content/series';
 import { getAllBooks } from '@/lib/content/books';
-import { resolveLocale } from "@/lib/i18n";
+import { resolveLocaleValue } from "@/lib/i18n";
 import "./globals.css";
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
 const inter = localFont({
   src: [
@@ -82,14 +85,14 @@ const feedAlternates = (() => {
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.baseUrl),
-  title: resolveLocale(siteConfig.title),
-  description: resolveLocale(siteConfig.description),
+  title: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
+  description: resolveLocaleValue(siteConfig.description, DEFAULT_LOCALE),
   icons: {
     icon: faviconMeta,
   },
   ...(feedAlternates && { alternates: feedAlternates }),
   openGraph: {
-    siteName: resolveLocale(siteConfig.title),
+    siteName: resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE),
     locale: siteConfig.i18n.defaultLocale,
     type: 'website',
     images: [{ url: siteConfig.ogImage, width: 1200, height: 630 }],
@@ -150,7 +153,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <LanguageProvider>
+          <LanguageProvider twinnedPaths={getTwinnedPathManifest()}>
             <div className="selection:bg-accent/20 selection:text-accent dark:selection:bg-accent/30 dark:selection:text-accent min-h-screen flex flex-col">
               <Navbar seriesList={seriesList} booksList={booksList} />
               <main id="main-content" className="pt-16 flex-grow">

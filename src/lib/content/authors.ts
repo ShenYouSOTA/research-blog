@@ -1,7 +1,7 @@
 import GithubSlugger from 'github-slugger';
 import type { PostData } from './types';
 import { createMemo } from './cache';
-import { getAllPosts } from './posts';
+import { getPostsWithLocaleOriginals } from './posts';
 
 /**
  * Author aggregation and author-slug URLs. Author identity is the display
@@ -20,7 +20,7 @@ export function getAuthorSlug(author: string): string {
 }
 
 export function getPostsByAuthor(author: string): PostData[] {
-  const allPosts = getAllPosts();
+  const allPosts = getPostsWithLocaleOriginals();
   return allPosts.filter((post) =>
     post.authors.map(a => a.toLowerCase()).includes(author.toLowerCase())
   );
@@ -30,7 +30,7 @@ const allAuthorsMemo = createMemo<Record<string, number>>();
 
 export function getAllAuthors(): Record<string, number> {
   return allAuthorsMemo.get(() => {
-    const allPosts = getAllPosts();
+    const allPosts = getPostsWithLocaleOriginals();
     const authors: Record<string, number> = {};
 
     allPosts.forEach((post) => {

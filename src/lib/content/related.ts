@@ -16,8 +16,10 @@ const relatedPostsMemo = createKeyedMemo<string, PostData[]>();
 
 export function getRelatedPosts(currentPost: PostData, limit: number = 3): PostData[] {
   const currentUrl = getPostUrl(currentPost);
+  // Within-locale: the candidate pool is the post's own tree, so a
+  // translation can never surface its own twin as "related".
   return relatedPostsMemo.get(`${currentUrl}:${limit}`, () => {
-    return getAllPosts()
+    return getAllPosts(currentPost.locale)
       // Exclude by canonical identity, not slug — a different series' same-slug
       // post is a distinct post and stays eligible.
       .filter(post => getPostUrl(post) !== currentUrl)
@@ -45,13 +47,14 @@ const toNav = (post: PostData | null): PostNavItem | null =>
   post ? toPostNavItems([post])[0] : null;
 
 export function getAdjacentPosts(currentPost: PostData): { prev: PostNavItem | null; next: PostNavItem | null } {
+  const locale = currentPost.locale;
   if (currentPost.series) {
-    const seriesData = getSeriesData(currentPost.series);
+    const seriesData = getSeriesData(currentPost.series, locale);
     if (seriesData?.type !== 'collection') {
-      const seriesPosts = getSeriesPosts(currentPost.series);
+      const seriesPosts = getSeriesPosts(currentPost.series, locale);
       const seriesIndex = seriesPosts.findIndex(post => post.slug === currentPost.slug);
       if (seriesIndex !== -1) {
-        return adjacentPostsMemo.get(`${currentPost.series}/${currentPost.slug}`, () => ({
+        return adjacentPostsMemo.get(`${locale} ${currentPost.series}/${currentPost.slug}`, () => ({
           prev: toNav(seriesIndex > 0 ? seriesPosts[seriesIndex - 1] : null),
           next: toNav(seriesIndex < seriesPosts.length - 1 ? seriesPosts[seriesIndex + 1] : null),
         }));
@@ -59,11 +62,11 @@ export function getAdjacentPosts(currentPost: PostData): { prev: PostNavItem | n
     }
   }
 
-  // Global date order. Locate the current post by canonical identity so a
-  // duplicate slug can't match a different post first.
+  // Global date order within the post's own tree. Locate the current post by
+  // canonical identity so a duplicate slug can't match a different post first.
   const currentUrl = getPostUrl(currentPost);
   return adjacentPostsMemo.get(currentUrl, () => {
-    const allPosts = getAllPosts(); // sorted desc by date (newest first)
+    const allPosts = getAllPosts(locale); // sorted desc by date (newest first)
     const index = allPosts.findIndex(p => getPostUrl(p) === currentUrl);
     if (index === -1) {
       return { prev: null, next: null };

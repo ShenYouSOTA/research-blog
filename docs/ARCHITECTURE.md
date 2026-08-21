@@ -92,6 +92,61 @@ src/app/
 - Links should always target concrete paths, not route placeholders such as `/posts/[slug]`.
 - When moving series posts off the default posts path, `scripts/add-series-redirects.ts` updates frontmatter `redirectFrom` entries so static redirect pages can be generated.
 
+## Locale Content Trees (i18n)
+
+When `i18n.enabled` is true, content in a non-default locale lives in a tree
+mirroring `content/`: `content/zh/posts/foo.md`, `content/zh/series/<s>/…`,
+`content/zh/about.mdx`. Language is determined by tree membership alone — no
+frontmatter field. The default locale's content stays at the `content/` root
+and keeps its unprefixed URLs.
+
+- **URLs**: a locale tree serves the *same URL grammar* under its prefix —
+  `content/zh/posts/foo.md` → `/zh/posts/foo/`. `getPostUrl()` reads the
+  entity's `locale`, so default-tree URLs (and feed GUIDs / graph node ids)
+  are byte-identical to a pre-i18n site.
+- **Twins**: files at the same tree-relative path (`treePath`, extension-
+  stripped, `/index`–`/README` collapsed) are translations of each other.
+  Every language version is **self-canonical** (a cross-language canonical
+  would tell Google to drop the translation from the index); twins are
+  connected by reciprocal `hreflang` with `x-default` = the unprefixed URL.
+  `contentSeoUrls()` in `src/lib/locale-routes.ts` is the single owner of
+  those rules.
+- **Routing**: a sibling `[locale]` segment cannot coexist with `[slug]`
+  (Next.js E337), so locale paths ride the existing dynamic tree: `/zh/` →
+  `[slug]`, `/zh/<x>/` → `[slug]/[postSlug]`, deeper →
+  `[slug]/[postSlug]/[...rest]`. `src/lib/locale-routes.ts` owns the
+  dispatcher (`resolveLocalizedPath`) and the params providers, mirroring
+  `route-aliases.ts`; generation is **sparse** — a locale page exists iff its
+  tree holds the content (`hasLocaleContent` gates home and listings).
+- **Reserved segments**: locale codes (including the default) join
+  `getReservedRouteSegments()`; a series/page/alias/basePath named like a
+  locale code fails the build.
+- **Migration aliases**: content moved into a locale tree declares its old
+  unprefixed paths in `redirectFrom`; alias pages are generated at those
+  unprefixed paths and redirect into the tree. No alias pages exist *at*
+  locale-prefixed paths.
+- **Chrome**: the client locale is URL-derived (`LanguageProvider` +
+  `usePathname`); `LanguageSwitch` navigates to the page's twin (falling back
+  to the locale home) via the twin manifest `getTwinnedPathManifest()` passed
+  through the root layout.
+- **Aggregations**: `/tags`, `/archive`, `/authors`, `/graph` stay global and
+  include locale-tree originals (linking to `/zh/…`); feeds serve the default
+  tree plus locale-tree originals (twins excluded); search indexes all trees
+  with a `lang` field; the sitemap unions the trees with
+  `alternates.languages` on twins.
+- **Export**: `scripts/fix-locale-html-lang.ts` stamps `<html lang>` per
+  locale under `out/<locale>/**` before Pagefind runs, which also splits the
+  Pagefind index by language (correct CJK segmentation, no cross-language
+  duplicate results). `scripts/copy-assets.ts` mirrors locale-tree assets to
+  `public/<locale>/…`.
+- **Not mirrored (v1)**: flows locale trees throw at discovery; `/zh/tags`,
+  `/zh/archive`, `/zh/authors`, `/zh/graph` and per-locale feeds are
+  deferred.
+- Nothing hardcodes a locale: with `defaultLocale: 'zh'`, the `content/` root
+  is the Chinese tree and English lives in `content/en/` at `/en/…`. Flipping
+  the default on an existing site is a full URL migration, not a config
+  toggle.
+
 ## Key Components
 
 Layout & navigation:

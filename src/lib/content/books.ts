@@ -6,8 +6,8 @@ import { siteConfig } from '../../../site.config';
 import { byDateDesc } from '../sort';
 import { extractContentMetrics } from '../text-metrics';
 import type { Heading } from './types';
-import { booksDirectory, readUtf8File } from './io';
-import { createProdMemo, createProdKeyedMemo } from './cache';
+import { domainDir, assertKnownLocale, readUtf8File } from './io';
+import { createProdKeyedMemo } from './cache';
 import { normalizeCoverImage } from './cover-image';
 import { dateField, draftField, invalidFrontmatterError } from './schema';
 
@@ -69,6 +69,15 @@ export interface BookData {
   content: string;
   toc: BookTocItem[];
   chapters: BookChapterEntry[];
+  /** Locale tree this book was loaded from (siteConfig.i18n.defaultLocale for the content/ root tree). */
+  locale: string;
+}
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
+/** Composite memo key: locale trees are parallel content sets, so every per-slug memo is per-locale too. */
+function localeKey(locale: string, slug: string): string {
+  return `${locale} ${slug}`;
 }
 
 export interface BookChapterData {
@@ -212,13 +221,15 @@ const bookDataMemo = createProdKeyedMemo<string, BookData | null>();
  * index plus every chapter's frontmatter (isChapterDraft), an O(N^2) reparse
  * per book. Dev recomputes so HMR sees edited content.
  */
-export function getBookData(slug: string): BookData | null {
-  return bookDataMemo.get(slug, () => computeBookData(slug));
+export function getBookData(slug: string, locale: string = DEFAULT_LOCALE): BookData | null {
+  return bookDataMemo.get(localeKey(locale, slug), () => computeBookData(slug, locale));
 }
 
-function computeBookData(slug: string): BookData | null {
-  if (!fs.existsSync(booksDirectory)) return null;
-  const bookDir = path.join(booksDirectory, slug);
+function computeBookData(slug: string, locale: string): BookData | null {
+  assertKnownLocale(locale);
+  const localeBooksDir = domainDir('books', locale);
+  if (!fs.existsSync(localeBooksDir)) return null;
+  const bookDir = path.join(localeBooksDir, slug);
   if (!fs.existsSync(bookDir)) return null;
 
   const indexPathMdx = path.join(bookDir, 'index.mdx');
@@ -256,7 +267,8 @@ function computeBookData(slug: string): BookData | null {
     );
   }
 
-  const coverImage = normalizeCoverImage(data.coverImage, `/books/${slug}`);
+  const assetPrefix = locale === DEFAULT_LOCALE ? '' : `${locale}/`;
+  const coverImage = normalizeCoverImage(data.coverImage, `/${assetPrefix}books/${slug}`);
 
   let authors = data.authors;
   if (authors.length === 0) {
@@ -295,6 +307,7 @@ function computeBookData(slug: string): BookData | null {
     content: content.trim(),
     toc,
     chapters: visibleChapters,
+    locale,
   };
 }
 
@@ -344,15 +357,15 @@ const bookChapterMemo = createProdKeyedMemo<string, BookChapterData | null>();
  * page body); without the memo each re-read + re-parsed the chapter file and
  * recomputed its metrics. Dev recomputes so HMR sees edited content.
  */
-export function getBookChapter(bookSlug: string, chapterSlug: string): BookChapterData | null {
-  return bookChapterMemo.get(`${bookSlug}::${chapterSlug}`, () => computeBookChapter(bookSlug, chapterSlug));
+export function getBookChapter(bookSlug: string, chapterSlug: string, locale: string = DEFAULT_LOCALE): BookChapterData | null {
+  return bookChapterMemo.get(`${locale} ${bookSlug}::${chapterSlug}`, () => computeBookChapter(bookSlug, chapterSlug, locale));
 }
 
-function computeBookChapter(bookSlug: string, chapterSlug: string): BookChapterData | null {
-  const book = getBookData(bookSlug);
+function computeBookChapter(bookSlug: string, chapterSlug: string, locale: string): BookChapterData | null {
+  const book = getBookData(bookSlug, locale);
   if (!book) return null;
 
-  const bookDir = path.join(booksDirectory, bookSlug);
+  const bookDir = path.join(domainDir('books', locale), bookSlug);
   const resolved = resolveChapterFilePath(bookDir, chapterSlug);
   if (!resolved) return null;
   const { path: fullPath, isFolder } = resolved;
@@ -411,25 +424,27 @@ function computeBookChapter(bookSlug: string, chapterSlug: string): BookChapterD
 
 /** Absolute path of a book's content directory. Useful for plugins that
  *  need to resolve relative paths from chapter source files. */
-export function getBookDirPath(bookSlug: string): string {
-  return path.join(booksDirectory, bookSlug);
+export function getBookDirPath(bookSlug: string, locale: string = DEFAULT_LOCALE): string {
+  return path.join(domainDir('books', locale), bookSlug);
 }
 
-const allBooksMemo = createProdMemo<BookData[]>();
+const allBooksMemo = createProdKeyedMemo<string, BookData[]>();
 
-export function getAllBooks(): BookData[] {
+export function getAllBooks(locale: string = DEFAULT_LOCALE): BookData[] {
+  assertKnownLocale(locale);
   // Prod-only memo: getAllBooks runs from the root layout (books nav), so on a
   // static export it would otherwise re-read + re-parse every book index on
   // every page. Dev re-reads each call so HMR sees fresh books.
-  return allBooksMemo.get(() => {
-    if (!fs.existsSync(booksDirectory)) return [];
+  return allBooksMemo.get(locale, () => {
+    const localeBooksDir = domainDir('books', locale);
+    if (!fs.existsSync(localeBooksDir)) return [];
 
-    const entries = fs.readdirSync(booksDirectory, { withFileTypes: true });
+    const entries = fs.readdirSync(localeBooksDir, { withFileTypes: true });
     const books: BookData[] = [];
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const book = getBookData(entry.name);
+      const book = getBookData(entry.name, locale);
       if (!book) continue;
       if (process.env.NODE_ENV === 'production' && book.draft) continue;
       books.push(book);
@@ -439,12 +454,12 @@ export function getAllBooks(): BookData[] {
   });
 }
 
-export function getFeaturedBooks(): BookData[] {
-  return getAllBooks().filter(book => book.featured);
+export function getFeaturedBooks(locale: string = DEFAULT_LOCALE): BookData[] {
+  return getAllBooks(locale).filter(book => book.featured);
 }
 
-export function getBooksByAuthor(author: string): BookData[] {
-  return getAllBooks().filter(book =>
+export function getBooksByAuthor(author: string, locale: string = DEFAULT_LOCALE): BookData[] {
+  return getAllBooks(locale).filter(book =>
     book.authors.some(a => a.toLowerCase() === author.toLowerCase())
   );
 }

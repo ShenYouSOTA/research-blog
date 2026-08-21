@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import LocaleLink from '@/components/LocaleLink';
 import { siteConfig } from '../../site.config';
 import { T, TLabel, TLocale } from '@/components/T';
 import LanguageSwitch from './LanguageSwitch';
@@ -12,7 +12,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mb-10 lg:mb-12">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-2">
-            <Link href="/" className="flex items-center justify-center lg:justify-start gap-2 mb-4 group no-underline">
+            <LocaleLink href="/" className="flex items-center justify-center lg:justify-start gap-2 mb-4 group no-underline">
               <svg
                 viewBox="0 0 32 32"
                 className="w-6 h-6 text-accent group-hover:rotate-12 transition-transform duration-300"
@@ -29,7 +29,7 @@ export default function Footer() {
                 <path d="M20.5 18 Q 26 14 26 8 Q 23 12 20.5 18" fill="currentColor" stroke="none" />
               </svg>
               <span className="font-serif font-bold text-lg text-heading"><TLocale value={siteConfig.title} /></span>
-            </Link>
+            </LocaleLink>
             <p className="text-sm text-muted leading-relaxed max-w-sm mx-auto text-center lg:mx-0 lg:text-left">
               <TLocale value={siteConfig.description} />
             </p>
@@ -41,9 +41,9 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               {[...(siteConfig.footer?.explore ?? [])].sort((a, b) => a.weight - b.weight).map((item) => (
                 <li key={item.url}>
-                  <Link href={item.url} className="text-foreground/80 hover:text-accent transition-colors no-underline">
+                  <LocaleLink href={item.url} className="text-foreground/80 hover:text-accent transition-colors no-underline">
                     <TLabel name={item.name} />
-                  </Link>
+                  </LocaleLink>
                 </li>
               ))}
             </ul>
@@ -63,9 +63,9 @@ export default function Footer() {
                         <TLabel name={item.name} />
                       </a>
                     ) : (
-                      <Link href={item.url} className={className}>
+                      <LocaleLink href={item.url} className={className}>
                         <TLabel name={item.name} />
-                      </Link>
+                      </LocaleLink>
                     )}
                   </li>
                 );
@@ -84,7 +84,7 @@ export default function Footer() {
                  <span className="opacity-20">|</span>
                </>
              )}
-             <Link href="/privacy" className="hover:text-foreground transition-colors no-underline"><T k="privacy" /></Link>
+             <LocaleLink href="/privacy" className="hover:text-foreground transition-colors no-underline"><T k="privacy" /></LocaleLink>
              {siteConfig.footer?.bottomLinks?.map((item, index) => {
                const label = <TLocale value={item.text} />;
                const isInternal = item.url?.startsWith('/');
@@ -93,7 +93,7 @@ export default function Footer() {
                    <span className="opacity-20">|</span>
                    {item.url ? (
                      isInternal ? (
-                       <Link href={item.url} className="hover:text-foreground transition-colors no-underline">{label}</Link>
+                       <LocaleLink href={item.url} className="hover:text-foreground transition-colors no-underline">{label}</LocaleLink>
                      ) : (
                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors no-underline">{label}</a>
                      )

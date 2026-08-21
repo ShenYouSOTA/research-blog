@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import type { PostData } from '@/lib/content/types';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import { getPostUrl } from '@/lib/urls';
 import MetaDot from './ui/MetaDot';
 
-export default function RelatedPosts({ posts }: { posts: PostData[] }) {
+export default function RelatedPosts({ posts, locale }: { posts: PostData[]; locale: string }) {
+  const { t } = getTranslator(locale);
   if (!posts || posts.length === 0) return null;
 
   return (

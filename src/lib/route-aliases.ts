@@ -10,7 +10,10 @@ import {
   validateSeriesAutoPaths,
   getPostUrl,
   getSeriesListUrl,
-  RESERVED_ROUTE_SEGMENTS,
+  getReservedRouteSegments,
+  getRouteLocales,
+  getNonDefaultLocales,
+  localizeUrl,
 } from './urls';
 import { safeDecodeParam, resolveFromParam, withDevEncodedVariants } from './route-params';
 
@@ -29,6 +32,22 @@ import { safeDecodeParam, resolveFromParam, withDevEncodedVariants } from './rou
 
 const POST_PAGE_SIZE = siteConfig.pagination.posts;
 const SERIES_PAGE_SIZE = siteConfig.pagination.series;
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+
+/**
+ * Alias scan domain: the default tree plus every locale tree. Content that
+ * migrated into a locale tree (e.g. a Chinese series moving under content/zh/)
+ * declares its OLD unprefixed paths in redirectFrom — those alias pages are
+ * generated at the unprefixed path and target the entity's locale-aware URL
+ * (getPostUrl reads post.locale, so targets localize automatically).
+ */
+export function postsAcrossTrees(): PostData[] {
+  return [getAllPosts(), ...getNonDefaultLocales().map(locale => getAllPosts(locale))].flat();
+}
+
+function contentLocalesInScanOrder(): string[] {
+  return [DEFAULT_LOCALE, ...getNonDefaultLocales()];
+}
 
 // ─── series redirectFrom lookup (absorbed from series-redirects.ts) ──────────
 
@@ -51,18 +70,22 @@ export function findSeriesByRedirectFrom(path: string): { slug: string; data: Po
   if (!normalizedPath) return null;
 
   // Memoized: routes ask 2–3 times per request (params, metadata, page body).
+  // Scans every locale tree — a migrated series' data carries its locale, so
+  // callers can localize the redirect target.
   return seriesRedirectMemo.get(normalizedPath, () => {
-    for (const seriesSlug of Object.keys(getAllSeries())) {
-      const data = getSeriesData(seriesSlug);
-      if (!data) continue;
+    for (const locale of contentLocalesInScanOrder()) {
+      for (const seriesSlug of Object.keys(getAllSeries(locale))) {
+        const data = getSeriesData(seriesSlug, locale);
+        if (!data) continue;
 
-      const hasRedirect = (data.redirectFrom ?? []).some((redirectFrom) => {
-        const normalizedRedirect = normalizeRedirectPath(redirectFrom);
-        return normalizedRedirect === normalizedPath;
-      });
+        const hasRedirect = (data.redirectFrom ?? []).some((redirectFrom) => {
+          const normalizedRedirect = normalizeRedirectPath(redirectFrom);
+          return normalizedRedirect === normalizedPath;
+        });
 
-      if (hasRedirect) {
-        return { slug: seriesSlug, data };
+        if (hasRedirect) {
+          return { slug: seriesSlug, data };
+        }
       }
     }
 
@@ -145,6 +168,19 @@ export function collectSeriesPageAliases(
 /** `[slug]`: pages + custom basePath + series custom/auto paths + 1-segment redirectFrom. */
 export function topLevelSlugParams(): { slug: string }[] {
   const pages = getAllPages();
+
+  // Locale codes are reserved URL prefixes (/zh/… is the zh content tree) —
+  // a static page claiming one would silently shadow that entire surface.
+  const routeLocales = new Set(getRouteLocales());
+  for (const page of pages) {
+    if (routeLocales.has(page.slug)) {
+      throw new Error(
+        `[amytis] Static page "${page.slug}" conflicts with the configured locale prefix "/${page.slug}". ` +
+        `Locale codes are reserved URL segments — rename the page.`
+      );
+    }
+  }
+
   const params = pages.map((page) => ({ slug: page.slug }));
 
   // Add custom posts basePath listing (e.g. /articles)
@@ -177,9 +213,9 @@ export function topLevelSlugParams(): { slug: string }[] {
     basePath,
     ...Object.values(customPaths),
     ...autoPathSlugs,
-    ...RESERVED_ROUTE_SEGMENTS,
+    ...getReservedRouteSegments(),
   ]);
-  for (const alias of collectSingleSegmentAliases(getAllPosts(), reservedSlugs)) {
+  for (const alias of collectSingleSegmentAliases(postsAcrossTrees(), reservedSlugs)) {
     params.push({ slug: alias });
   }
 
@@ -259,7 +295,9 @@ export function prefixedPostParams(): { slug: string; postSlug: string }[] {
   }
 
   // redirectFrom entries — generate redirect pages for 2-segment old paths
-  for (const post of getAllPosts()) {
+  // (scanning every tree: migrated locale-tree content keeps its old
+  // unprefixed paths alive as redirects).
+  for (const post of postsAcrossTrees()) {
     for (const from of post.redirectFrom ?? []) {
       const segments = from.split('/').filter(Boolean);
       if (segments.length !== 2) continue;
@@ -283,14 +321,18 @@ export function seriesSlugParams(): { slug: string }[] {
   const allSeries = getAllSeries();
   const slugs = new Set(Object.keys(allSeries));
 
-  // Also include old slugs from redirectFrom entries at /series/[old-slug].
-  for (const seriesSlug of Object.keys(allSeries)) {
-    const data = getSeriesData(seriesSlug);
-    for (const from of data?.redirectFrom ?? []) {
-      const segments = from.split('/').filter(Boolean);
-      if (segments.length !== 2 || segments[0] !== 'series') continue;
-      if (from === `/series/${seriesSlug}`) continue;
-      slugs.add(segments[1]);
+  // Also include old slugs from redirectFrom entries at /series/[old-slug] —
+  // scanning every locale tree, so a series that migrated into content/zh/
+  // keeps its old unprefixed URL alive as a redirect.
+  for (const locale of contentLocalesInScanOrder()) {
+    for (const seriesSlug of Object.keys(getAllSeries(locale))) {
+      const data = getSeriesData(seriesSlug, locale);
+      for (const from of data?.redirectFrom ?? []) {
+        const segments = from.split('/').filter(Boolean);
+        if (segments.length !== 2 || segments[0] !== 'series') continue;
+        if (from === localizeUrl(`/series/${seriesSlug}`, locale)) continue;
+        slugs.add(segments[1]);
+      }
     }
   }
 
@@ -316,13 +358,30 @@ export function seriesPageParams(): { slug: string; page: string }[] {
     redirectFrom: getSeriesData(slug)?.redirectFrom ?? [],
   }));
 
+  // Canonical pagination pages exist for the DEFAULT tree only; locale trees
+  // paginate under their own prefix (locale-routes.ts).
   for (const { slug, totalPages } of seriesEntries) {
     for (let i = 2; i <= totalPages; i++) {
       pushParam(slug, i.toString());
     }
   }
 
-  for (const [aliasSlug, totalPages] of collectSeriesPageAliases(seriesEntries)) {
+  // Alias pagination also covers locale-tree series with unprefixed
+  // /series/<old> aliases — the old paginated URLs redirect into the tree.
+  const aliasEntries = [...seriesEntries];
+  for (const locale of getNonDefaultLocales()) {
+    for (const [slug, posts] of Object.entries(getAllSeries(locale))) {
+      const redirectFrom = getSeriesData(slug, locale)?.redirectFrom ?? [];
+      if (redirectFrom.length === 0) continue;
+      aliasEntries.push({
+        slug,
+        totalPages: Math.ceil(posts.length / SERIES_PAGE_SIZE),
+        redirectFrom,
+      });
+    }
+  }
+
+  for (const [aliasSlug, totalPages] of collectSeriesPageAliases(aliasEntries)) {
     for (let i = 2; i <= totalPages; i++) {
       pushParam(aliasSlug, i.toString());
     }
@@ -335,12 +394,14 @@ export function seriesPageParams(): { slug: string; page: string }[] {
 
 // ─── request-time resolution ─────────────────────────────────────────────────
 
-/** Map a `[slug]` / `[slug]/page/[page]` prefix to the series it lists, if any. */
-export function resolveSeriesListingPrefix(prefix: string): string | undefined {
+/** Map a `[slug]` / `[slug]/page/[page]` prefix to the series it lists, if any.
+ *  The prefix rules (customPaths, autoPaths) are global config; the series
+ *  lookup runs against the given locale tree. */
+export function resolveSeriesListingPrefix(prefix: string, locale: string = DEFAULT_LOCALE): string | undefined {
   const customPaths = getSeriesCustomPaths();
   return (
     Object.entries(customPaths).find(([, path]) => path === prefix)?.[0] ??
-    (getSeriesAutoPaths() && !Object.hasOwn(customPaths, prefix) && getSeriesData(prefix) ? prefix : undefined)
+    (getSeriesAutoPaths() && !Object.hasOwn(customPaths, prefix) && getSeriesData(prefix, locale) ? prefix : undefined)
   );
 }
 
@@ -377,7 +438,7 @@ export function resolveTopLevelSlug(rawSlug: string): TopLevelResolution {
     return { kind: 'page', page };
   }
 
-  const redirectPost = getAllPosts().find(p => p.redirectFrom?.includes(`/${slug}`));
+  const redirectPost = postsAcrossTrees().find(p => p.redirectFrom?.includes(`/${slug}`));
   if (redirectPost) {
     return { kind: 'redirect', post: redirectPost, to: getPostUrl(redirectPost) };
   }
@@ -401,29 +462,39 @@ export type PrefixedPostResolution =
  * would send one series' child to the other. Only non-series surfaces
  * (basePath, legacy redirects) fall back to the global bare-slug lookup.
  */
-export function resolvePrefixedPost(rawPrefix: string, rawPostSlug: string): PrefixedPostResolution {
+export function resolvePrefixedPost(rawPrefix: string, rawPostSlug: string, locale: string = DEFAULT_LOCALE): PrefixedPostResolution {
   const decodedPrefix = safeDecodeParam(rawPrefix);
-  const currentPath = `/${decodedPrefix}/${safeDecodeParam(rawPostSlug)}`;
+  // The request path in canonical form: locale trees serve the same grammar
+  // under their prefix, and getPostUrl on a locale-tree post is prefixed too,
+  // so the canonical-vs-redirect comparison below stays an identity check.
+  const currentPath = localizeUrl(`/${decodedPrefix}/${safeDecodeParam(rawPostSlug)}`, locale);
 
   const basePath = getPostsBasePath();
   const customPaths = getSeriesCustomPaths();
-  const isValidBasePath = decodedPrefix === basePath && basePath !== 'posts';
+  // Unprefixed /posts/<slug> is served by the static posts/[slug] route, but
+  // no such static twin exists under a locale prefix — /zh/posts/<slug> must
+  // resolve here even when basePath is 'posts'.
+  const isValidBasePath = decodedPrefix === basePath && (basePath !== 'posts' || locale !== DEFAULT_LOCALE);
   const matchedSeriesSlug = Object.entries(customPaths).find(([, path]) => path === decodedPrefix)?.[0];
-  const isAutoSeriesPath = getSeriesAutoPaths() && !Object.hasOwn(customPaths, decodedPrefix) && getSeriesData(decodedPrefix) !== null;
+  const isAutoSeriesPath = getSeriesAutoPaths() && !Object.hasOwn(customPaths, decodedPrefix) && getSeriesData(decodedPrefix, locale) !== null;
 
   // A custom-path prefix maps to its series slug; an auto-path prefix IS the
   // series slug. Scope the lookup to that series so same-slug children of a
   // different series can't win the match.
   const owningSeries = matchedSeriesSlug ?? (isAutoSeriesPath ? decodedPrefix : undefined);
   const seriesScopedPost = owningSeries
-    ? resolveFromParam(rawPostSlug, slug => getSeriesPosts(owningSeries).find(p => p.slug === slug) ?? null)
+    ? resolveFromParam(rawPostSlug, slug => getSeriesPosts(owningSeries, locale).find(p => p.slug === slug) ?? null)
     : null;
 
+  // The legacy redirectFrom fallback stays a default-tree surface: no alias
+  // pages are generated at locale-prefixed paths (migration aliases live at
+  // their old unprefixed URLs).
   const post =
     seriesScopedPost ??
-    resolveFromParam(rawPostSlug, getPostBySlug) ??
-    getAllPosts().find(candidate => candidate.redirectFrom?.includes(currentPath)) ??
-    null;
+    resolveFromParam(rawPostSlug, slug => getPostBySlug(slug, locale)) ??
+    (locale === DEFAULT_LOCALE
+      ? postsAcrossTrees().find(candidate => candidate.redirectFrom?.includes(currentPath)) ?? null
+      : null);
   if (!post) return null;
 
   const isLegacyRedirect = post.redirectFrom?.includes(currentPath) ?? false;

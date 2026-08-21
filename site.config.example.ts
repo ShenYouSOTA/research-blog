@@ -51,7 +51,13 @@ export const siteConfig = {
   i18n: {
     // i18n is disabled: the language switcher is hidden and defaultLocale is always used.
     // To enable multi-language support, set enabled: true, add more locales, and
-    // convert plain string fields to locale maps: e.g. title: { en: '...', zh: '...' }
+    // convert plain string fields to locale maps: e.g. title: { en: '...', zh: '...' }.
+    //
+    // Content in another language lives in a locale tree mirroring content/:
+    // content/zh/posts/foo.md is served at /zh/posts/foo/ and pairs with
+    // content/posts/foo.md (same relative path) as its translation. The
+    // default locale's content stays at the content/ root, unprefixed.
+    // Locale codes become reserved URL segments while i18n is enabled.
     enabled: false,
     defaultLocale: 'en',
     locales: ['en'],

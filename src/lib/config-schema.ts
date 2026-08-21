@@ -184,6 +184,40 @@ export const SiteConfigSchema = z.object({
 
   // ── Authors ──
   authors: z.record(z.string(), authorSchema),
+}).superRefine((config, ctx) => {
+  // Locale codes double as reserved URL prefixes (/zh/… is the zh content
+  // tree), so URL-shaping config values must never collide with them. Only
+  // enforced while i18n is enabled — a disabled-i18n site has no locale routes.
+  const { i18n } = config;
+  if (!i18n.enabled) return;
+
+  if (!i18n.locales.includes(i18n.defaultLocale)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['i18n', 'defaultLocale'],
+      message: `defaultLocale "${i18n.defaultLocale}" must be listed in i18n.locales`,
+    });
+  }
+
+  const localeSet = new Set(i18n.locales);
+  const normalize = (segment: string) => segment.replace(/^\/+|\/+$/g, '');
+
+  if (localeSet.has(normalize(config.posts.basePath))) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['posts', 'basePath'],
+      message: `posts.basePath "${config.posts.basePath}" collides with a configured locale code — locale codes are reserved URL prefixes`,
+    });
+  }
+  for (const [key, value] of Object.entries(config.series.customPaths)) {
+    if (localeSet.has(normalize(value))) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['series', 'customPaths', key],
+        message: `series.customPaths["${key}"] = "${value}" collides with a configured locale code — locale codes are reserved URL prefixes`,
+      });
+    }
+  }
 });
 
 /**

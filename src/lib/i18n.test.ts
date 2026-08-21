@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { buildFeatureOverrides, resolveLocale, resolveLocaleValue, t, tWith } from './i18n';
-import { translations, TranslationKey, Language } from '@/i18n/translations';
+import { buildFeatureOverrides, getTranslator, resolveLocaleValue } from './i18n';
+import { translations, TranslationKey } from '@/i18n/translations';
 import { siteConfig } from '../../site.config';
-
-const defaultLocale = siteConfig.i18n.defaultLocale;
 
 describe('resolveLocaleValue', () => {
   test('passes plain strings through for any locale', () => {
@@ -35,17 +33,9 @@ describe('resolveLocaleValue', () => {
   });
 });
 
-describe('resolveLocale', () => {
-  test('passes plain strings through', () => {
-    expect(resolveLocale('Hello')).toBe('Hello');
-  });
+describe('getTranslator t', () => {
+  const { t } = getTranslator('en');
 
-  test('resolves a record using the configured default locale', () => {
-    expect(resolveLocale({ [defaultLocale]: 'picked', ['x-other']: 'not picked' })).toBe('picked');
-  });
-});
-
-describe('t', () => {
   test('returns a non-empty string for every translation key', () => {
     for (const key of Object.keys(translations.en) as TranslationKey[]) {
       const value = t(key);
@@ -54,14 +44,26 @@ describe('t', () => {
     }
   });
 
-  test('resolves keys against the default locale, falling back to en', () => {
-    const expected =
-      translations[defaultLocale as Language]?.back_to_top || translations.en.back_to_top;
-    expect(t('back_to_top')).toBe(expected);
+  test('resolves keys against the requested locale', () => {
+    expect(t('back_to_top')).toBe(translations.en.back_to_top);
+  });
+
+  test('a zh translator resolves keys against the zh table', () => {
+    expect(getTranslator('zh').t('back_to_top')).toBe('返回顶部');
+  });
+
+  test('an unknown locale falls back to en', () => {
+    expect(getTranslator('fr').t('back_to_top')).toBe(translations.en.back_to_top);
+  });
+
+  test('returns the same cached translator per locale', () => {
+    expect(getTranslator('en')).toBe(getTranslator('en'));
   });
 });
 
-describe('tWith', () => {
+describe('getTranslator tWith', () => {
+  const { t, tWith } = getTranslator('en');
+
   test('substitutes named parameters', () => {
     const result = tWith('page_of_total', { page: 2, total: 5 });
     expect(result).toContain('2');

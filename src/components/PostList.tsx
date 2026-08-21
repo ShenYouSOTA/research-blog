@@ -3,12 +3,13 @@ import type { PostData } from '@/lib/content/types';
 import CoverImage from './CoverImage';
 import Tag from './Tag';
 import { getPostUrl } from '@/lib/urls';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { CARD_HOVER, COVER_ZOOM } from '@/lib/ui-classes';
 
 interface PostListProps {
   posts: PostData[];
+  locale: string;
   showExcerpt?: boolean;
   showTags?: boolean;
   excerptLines?: 1 | 2;
@@ -16,10 +17,12 @@ interface PostListProps {
 
 export default function PostList({
   posts,
+  locale,
   showExcerpt = true,
   showTags = true,
   excerptLines = 2,
 }: PostListProps) {
+  const { t } = getTranslator(locale);
   if (posts.length === 0) {
     return (
       <div className="text-center py-12 text-muted">

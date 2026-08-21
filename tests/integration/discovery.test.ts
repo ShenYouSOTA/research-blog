@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { getAllTags, buildSlugRegistry, getBacklinks } from '../../src/lib/content/discovery';
-import { getAllPosts, getPostsByTag } from '../../src/lib/content/posts';
-import { getAllNotes, getNotesByTag } from '../../src/lib/content/notes';
+import { getAggregatedPostsByTag, getAllPosts, getPostsByTag } from '../../src/lib/content/posts';
+import { getAggregatedNotesByTag, getAllNotes, getNotesByTag } from '../../src/lib/content/notes';
 import { getAllFlows, getFlowsByTag } from '../../src/lib/content/flows';
 import { getPostUrl } from '../../src/lib/urls';
 
@@ -171,9 +171,11 @@ describe('Integration: discovery (slug registry, backlinks, tags)', () => {
       // The tag route generates a static param for every getAllTags() key with
       // dynamicParams=false, so any tag whose resolver finds nothing exports as
       // a 404. Note-only tags used to fail this because resolution ignored notes.
+      // Mirrors tags/[tag]/page.tsx: post resolution runs over the aggregated
+      // (default ∪ locale-original) domain, matching getAllTags' own domain.
       for (const tag of Object.keys(getAllTags())) {
         const total =
-          getPostsByTag(tag).length + getFlowsByTag(tag).length + getNotesByTag(tag).length;
+          getAggregatedPostsByTag(tag).length + getFlowsByTag(tag).length + getAggregatedNotesByTag(tag).length;
         expect(total).toBeGreaterThan(0);
       }
     });

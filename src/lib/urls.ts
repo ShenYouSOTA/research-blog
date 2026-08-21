@@ -1,4 +1,5 @@
 import { siteConfig } from '../../site.config';
+import { localizePath, splitLocalePath, type LocalePathConfig } from './locale-urls';
 
 /** Strip leading and trailing slashes so path segments compose cleanly. */
 function normalizeSegment(segment: string): string {
@@ -25,6 +26,54 @@ export function getSeriesAutoPaths(): boolean {
   return siteConfig.series?.autoPaths ?? true;
 }
 
+// ─── locale-aware URL prefixes ───────────────────────────────────────────────
+
+export function getDefaultLocale(): string {
+  return siteConfig.i18n.defaultLocale;
+}
+
+/**
+ * Locale codes that participate in URL routing: all configured locales while
+ * i18n is enabled, none otherwise (a disabled-i18n site has no locale routes,
+ * so its content may freely use segments like "en").
+ */
+export function getRouteLocales(): string[] {
+  return siteConfig.i18n.enabled ? [...siteConfig.i18n.locales] : [];
+}
+
+/** Non-default locale codes that appear as URL prefixes (e.g. ['zh']). */
+export function getNonDefaultLocales(): string[] {
+  const defaultLocale = getDefaultLocale();
+  return getRouteLocales().filter((locale) => locale !== defaultLocale);
+}
+
+export function isNonDefaultLocale(segment: string): boolean {
+  return getNonDefaultLocales().includes(segment);
+}
+
+function urlLocaleConfig(): LocalePathConfig {
+  return { locales: getRouteLocales(), defaultLocale: getDefaultLocale() };
+}
+
+/** `/posts/foo/` + `zh` → `/zh/posts/foo/`; identity for the default locale. */
+export function localizeUrl(path: string, locale: string): string {
+  return localizePath(path, locale, urlLocaleConfig());
+}
+
+/** `/zh/posts/foo/` → `{ locale: 'zh', path: '/posts/foo/' }`; unprefixed → default locale. */
+export function splitLocaleFromPath(path: string): { locale: string; path: string } {
+  return splitLocalePath(path, urlLocaleConfig());
+}
+
+/**
+ * Reserved top-level segments including configured locale codes. The default
+ * locale is reserved too — `/en/…` must stay unclaimable so a future
+ * defaultLocale flip can't be shadowed by existing content.
+ */
+export function getReservedRouteSegments(): Set<string> {
+  return new Set([...RESERVED_ROUTE_SEGMENTS, ...getRouteLocales()]);
+}
+
 /**
  * Validates that no series slug (without a customPaths override) conflicts with a reserved
  * top-level route or a static page slug. Throws a build-time error on collision so
@@ -38,13 +87,16 @@ export function validateSeriesAutoPaths(seriesSlugs: string[], extraReserved: st
   if (!getSeriesAutoPaths()) return;
   const customPaths = getSeriesCustomPaths();
   const basePath = getPostsBasePath();
-  const reserved = new Set([...RESERVED_ROUTE_SEGMENTS, basePath, ...extraReserved]);
+  const reserved = new Set([...getReservedRouteSegments(), basePath, ...extraReserved]);
 
   for (const slug of seriesSlugs) {
     if (Object.hasOwn(customPaths, slug)) continue; // Has an explicit override — skip
     if (reserved.has(slug)) {
+      const conflictsWith = getRouteLocales().includes(slug)
+        ? `the configured locale prefix "/${slug}"`
+        : `the reserved route "/${slug}"`;
       throw new Error(
-        `[amytis] Series slug "${slug}" conflicts with the reserved route "/${slug}". ` +
+        `[amytis] Series slug "${slug}" conflicts with ${conflictsWith}. ` +
         `Rename the series or add series.customPaths["${slug}"] = "..." to use a different URL prefix.`
       );
     }
@@ -63,13 +115,19 @@ export function withTrailingSlash(url: string): string {
   return url.endsWith('/') ? url : `${url}/`;
 }
 
-export function getPostUrl(post: { slug: string; series?: string }): string {
-  if (post.series) {
-    const customPath = getSeriesCustomPaths()[post.series];
-    if (customPath) return `/${customPath}/${post.slug}`;
-    if (getSeriesAutoPaths()) return `/${post.series}/${post.slug}`;
+export function getPostUrl(post: { slug: string; series?: string; locale?: string }): string {
+  let url: string;
+  if (post.series && getSeriesCustomPaths()[post.series]) {
+    url = `/${getSeriesCustomPaths()[post.series]}/${post.slug}`;
+  } else if (post.series && getSeriesAutoPaths()) {
+    url = `/${post.series}/${post.slug}`;
+  } else {
+    url = `/${getPostsBasePath()}/${post.slug}`;
   }
-  return `/${getPostsBasePath()}/${post.slug}`;
+  // Entity-carried locale: posts from a non-default tree live under /<locale>/…
+  // Default-tree posts (locale absent or = default) keep byte-identical URLs,
+  // which is what keeps feed GUIDs and graph node ids stable.
+  return post.locale ? localizeUrl(url, post.locale) : url;
 }
 
 /** Returns the posts listing URL (page 1). */

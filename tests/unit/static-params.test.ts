@@ -174,7 +174,12 @@ beforeAll(() => {
 
   mock.module('@/lib/content/posts', () => ({
     ...snapshotPosts,
-    getAllPosts: () => mockedPosts.filter(p => !(process.env.NODE_ENV === 'production' && p.draft)),
+    // Locale-aware like the real getter: the mocked content belongs to the
+    // default tree only, so the cross-tree alias scan sees each alias once.
+    getAllPosts: (locale?: string) =>
+      locale !== undefined && locale !== 'en'
+        ? []
+        : mockedPosts.filter(p => !(process.env.NODE_ENV === 'production' && p.draft)),
     getListingPosts: () => [],
     getPostBySlug: () => null,
     getPostsByTag: () => [],

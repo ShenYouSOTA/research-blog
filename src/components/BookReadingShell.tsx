@@ -13,7 +13,7 @@ import ImmersiveToggleButton from '@/components/ImmersiveToggleButton';
 import MetaDot from '@/components/ui/MetaDot';
 import type { BookTocItem, BookChapterEntry } from '@/lib/content/books';
 import type { Heading } from '@/lib/content/types';
-import { getBookUrl } from '@/lib/urls';
+import { getBookUrl , localizeUrl } from '@/lib/urls';
 
 interface BookReadingShellProps {
   book: {
@@ -45,7 +45,7 @@ export default function BookReadingShell({
   comments,
   children,
 }: BookReadingShellProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { enabled } = useImmersiveReading();
 
   const chapterHeader = (
@@ -90,7 +90,7 @@ export default function BookReadingShell({
   if (enabled) {
     return (
       <ImmersiveReader
-        rootHref={getBookUrl(book.slug)}
+        rootHref={localizeUrl(getBookUrl(book.slug), language)}
         rootTitle={book.title}
         currentTitle={chapter.title}
         sidebar={

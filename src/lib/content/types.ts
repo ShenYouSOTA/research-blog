@@ -27,6 +27,8 @@ export interface PostNavItem {
   title: string;
   date: string;
   series?: string;
+  /** Locale tree the post came from; absent means the default locale. */
+  locale?: string;
 }
 
 export interface CollectionContext {
@@ -66,8 +68,11 @@ export interface PostData {
   renderedHtml?: string;
   plainText?: string;
   headings: Heading[];
-  contentLocales?: Record<string, { content: string; title?: string; excerpt?: string; headings?: Heading[] }>;
   /** Public-relative base path used for resolving co-located images (e.g. "posts/my-post" or "posts" for root flat files). */
   imageBaseSlug: string;
   sourceFormat?: 'markdown' | 'rst';
+  /** Locale tree this post was loaded from (siteConfig.i18n.defaultLocale for the content/ root tree). */
+  locale: string;
+  /** Tree-relative, extension-stripped source identity — the twin key across locale trees (io.treePathFor). */
+  treePath: string;
 }

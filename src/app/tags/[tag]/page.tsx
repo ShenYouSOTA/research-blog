@@ -1,16 +1,19 @@
 import { getAllTags } from '@/lib/content/discovery';
-import { getPostsByTag } from '@/lib/content/posts';
+import { getAggregatedPostsByTag } from '@/lib/content/posts';
 import { getFlowsByTag } from '@/lib/content/flows';
-import { getNotesByTag } from '@/lib/content/notes';
+import { getAggregatedNotesByTag } from '@/lib/content/notes';
 import { isFeatureEnabled } from '@/lib/features';
 import { notFound } from 'next/navigation';
 import { siteConfig } from '../../../../site.config';
 import { Metadata } from 'next';
-import { resolveLocale, tWith } from '@/lib/i18n';
+import { getTranslator, resolveLocaleValue } from '@/lib/i18n';
 import { safeDecodeParam, resolveFromParam, withDevEncodedVariants } from '@/lib/route-params';
 import TagPageHeader from '@/components/TagPageHeader';
 import TagSidebar from '@/components/TagSidebar';
 import TagContentTabs from '@/components/TagContentTabs';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { tWith } = getTranslator(DEFAULT_LOCALE);
 
 export async function generateStaticParams() {
   const tags = getAllTags();
@@ -33,9 +36,9 @@ function resolveTagParam(rawTag: string) {
   // disabled so a note/flow-only tag doesn't render links to 404'd routes.
   const flowEnabled = isFeatureEnabled('flow');
   return resolveFromParam(rawTag, (candidate) => {
-    const posts = getPostsByTag(candidate);
+    const posts = getAggregatedPostsByTag(candidate);
     const flows = flowEnabled ? getFlowsByTag(candidate) : [];
-    const notes = flowEnabled ? getNotesByTag(candidate) : [];
+    const notes = flowEnabled ? getAggregatedNotesByTag(candidate) : [];
     return posts.length + flows.length + notes.length > 0
       ? { tag: candidate, posts, flows, notes }
       : null;
@@ -49,7 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tag: stri
   const total = resolved ? resolved.posts.length + resolved.flows.length + resolved.notes.length : 0;
 
   return {
-    title: `#${displayTag} | ${resolveLocale(siteConfig.title)}`,
+    title: `#${displayTag} | ${resolveLocaleValue(siteConfig.title, DEFAULT_LOCALE)}`,
     // Content-neutral: total spans posts, flows, and notes — not just posts.
     description: tWith('tag_meta_description', { count: total, tag: displayTag }),
   };
@@ -76,7 +79,7 @@ export default async function TagPage({
 
         <div className="flex-1 min-w-0">
           <TagPageHeader tag={decodedTag} postCount={posts.length} flowCount={flows.length} noteCount={notes.length} />
-          <TagContentTabs posts={posts} flows={flows} notes={notes} />
+          <TagContentTabs posts={posts} flows={flows} notes={notes} locale={DEFAULT_LOCALE} />
         </div>
       </div>
     </div>

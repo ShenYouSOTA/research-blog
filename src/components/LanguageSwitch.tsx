@@ -1,8 +1,10 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from './LanguageProvider';
 import { Language } from '@/i18n/translations';
 import { siteConfig } from '../../site.config';
+import { nextSwitchableLocale, resolveSwitchTarget } from '@/lib/locale-urls';
 
 const LOCALE_LABELS: Record<string, string> = {
   en: 'EN',
@@ -21,19 +23,34 @@ interface LanguageSwitchProps {
   variant?: 'pill' | 'text';
 }
 
+/**
+ * Language switch that NAVIGATES: the locale lives in the URL, so switching
+ * language means going to the page's twin in the other locale — or, when the
+ * current page has no twin there, to that locale's home. Renders nothing when
+ * the manifest is empty (i18n-disabled sites, and sites with no locale-tree
+ * content — including the window before the locale routes exist).
+ */
 export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps) {
-  const { language, setLanguage, isHydrated } = useLanguage();
+  const { language, twinnedPaths } = useLanguage();
+  const router = useRouter();
+  const pathname = usePathname();
   const locales = siteConfig.i18n.locales;
 
   if (siteConfig.i18n.enabled === false || locales.length < 2) return null;
+  const hasTargets = Object.values(twinnedPaths).some(paths => paths.length > 0);
+  if (!hasTargets) return null;
 
-  // SSR placeholder — reserve space to avoid layout shift
-  if (!isHydrated) {
-    return <div className={variant === 'pill' ? 'w-[52px] h-8' : 'w-16 h-4'} aria-hidden="true" />;
-  }
+  const config = { locales, defaultLocale: siteConfig.i18n.defaultLocale };
 
-  const currentIndex = locales.indexOf(language);
-  const nextLocale = locales[(currentIndex + 1) % locales.length] as Language;
+  const switchTo = (target: Language) => {
+    if (target === language) return;
+    router.push(resolveSwitchTarget(pathname, language, target, twinnedPaths, config));
+  };
+
+  // Cycle only through switchable locales — an empty locale's home was never
+  // generated, so blindly advancing to the next configured code could 404.
+  const nextLocale = nextSwitchableLocale(language, twinnedPaths, config) as Language | null;
+  if (!nextLocale) return null;
 
   // ── Text variant: quiet typographic links for the footer ──────────────────
   if (variant === 'text') {
@@ -43,7 +60,7 @@ export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps
         <span className="flex items-center gap-1.5" role="group" aria-label="Language">
           <button
             type="button"
-            onClick={() => setLanguage(a)}
+            onClick={() => switchTo(a)}
             aria-pressed={language === a}
             className={`text-xs font-sans tracking-wide transition-colors duration-150 ${
               language === a
@@ -56,7 +73,7 @@ export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps
           <span className="text-muted/25 select-none" aria-hidden="true">·</span>
           <button
             type="button"
-            onClick={() => setLanguage(b)}
+            onClick={() => switchTo(b)}
             aria-pressed={language === b}
             className={`text-xs font-sans tracking-wide transition-colors duration-150 ${
               language === b
@@ -73,7 +90,7 @@ export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps
     return (
       <button
         type="button"
-        onClick={() => setLanguage(nextLocale)}
+        onClick={() => switchTo(nextLocale)}
         className="text-xs font-sans text-muted/60 hover:text-foreground/80 transition-colors duration-150"
         aria-label={`Switch to ${LOCALE_LABELS[nextLocale] ?? nextLocale}`}
       >
@@ -87,7 +104,7 @@ export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps
     const [a, b] = locales as Language[];
     return (
       <button
-        onClick={() => setLanguage(nextLocale)}
+        onClick={() => switchTo(nextLocale)}
         className="group flex items-center rounded-full border border-line-strong bg-transparent hover:border-accent/40 transition-all duration-200"
         aria-label={`Switch language to ${LOCALE_LABELS[nextLocale] ?? nextLocale}`}
         title={`Switch to ${LOCALE_LABELS[nextLocale] ?? nextLocale}`}
@@ -118,7 +135,7 @@ export default function LanguageSwitch({ variant = 'pill' }: LanguageSwitchProps
   // 3+ locales pill fallback: show current, click cycles
   return (
     <button
-      onClick={() => setLanguage(nextLocale)}
+      onClick={() => switchTo(nextLocale)}
       className="w-8 h-8 flex items-center justify-center text-foreground/80 hover:text-accent transition-colors duration-200 text-[11px] font-sans font-bold tracking-wider"
       aria-label={`Language: ${LOCALE_LABELS_SHORT[language] ?? language}. Click to switch to ${LOCALE_LABELS_SHORT[nextLocale] ?? nextLocale}`}
     >

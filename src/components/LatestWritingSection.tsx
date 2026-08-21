@@ -7,9 +7,10 @@ import { getPostsListUrl } from '@/lib/urls';
 
 interface LatestWritingSectionProps {
   posts: PostData[];
+  locale: string;
 }
 
-export default function LatestWritingSection({ posts }: LatestWritingSectionProps) {
+export default function LatestWritingSection({ posts, locale }: LatestWritingSectionProps) {
   return (
     <section id="latest-posts">
       <div className="flex items-center justify-between mb-8">
@@ -22,7 +23,7 @@ export default function LatestWritingSection({ posts }: LatestWritingSectionProp
         </Link>
       </div>
 
-      <PostList posts={posts} showTags={false} excerptLines={1} />
+      <PostList posts={posts} locale={locale} showTags={false} excerptLines={1} />
     </section>
   );
 }

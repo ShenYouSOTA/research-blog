@@ -15,7 +15,7 @@ describe("Integration: Series", () => {
     expect(nav.length).toBe(withPosts!.length);
     for (let i = 0; i < nav.length; i++) {
       const item = nav[i];
-      expect(new Set(Object.keys(item))).toEqual(new Set(['slug', 'title', 'date', 'series']));
+      expect(new Set(Object.keys(item))).toEqual(new Set(['slug', 'title', 'date', 'series', 'locale']));
       expect(item.slug).toBe(withPosts![i].slug);
       // The heavy fields that inflate the RSC payload must be absent.
       expect('content' in item).toBe(false);

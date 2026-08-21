@@ -3,13 +3,14 @@ import Link from 'next/link';
 import CoverImage from './CoverImage';
 import { cn } from '@/lib/cn';
 import { COVER_ZOOM } from '@/lib/ui-classes';
-import { t } from '@/lib/i18n';
+import { getTranslator } from '@/lib/i18n';
 
 interface ContentCardProps {
   href: string;
   title: string;
   /** Used by CoverImage to resolve co-located cover assets. */
   slug: string;
+  locale: string;
   coverImage?: string;
   /** Accent badge content, e.g. "5 chapters" or "3 parts". */
   badge: ReactNode;
@@ -33,12 +34,14 @@ export default function ContentCard({
   href,
   title,
   slug,
+  locale,
   coverImage,
   badge,
   authors,
   excerpt,
   size = 'index',
 }: ContentCardProps) {
+  const { t } = getTranslator(locale);
   const compact = size === 'compact';
   const Heading = compact ? 'h3' : 'h2';
 

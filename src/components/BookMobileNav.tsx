@@ -6,7 +6,7 @@ import type { BookTocItem, BookTocSection, BookChapterRef, BookChapterEntry } fr
 import { useLanguage } from './LanguageProvider';
 import PrevNextNav from './PrevNextNav';
 import MetaLabel from './ui/MetaLabel';
-import { getBookChapterUrl } from '@/lib/urls';
+import { getBookChapterUrl, localizeUrl } from '@/lib/urls';
 
 interface BookMobileNavProps {
   bookSlug: string;
@@ -17,7 +17,7 @@ interface BookMobileNavProps {
 }
 
 export default function BookMobileNav({ bookSlug, bookTitle, toc, chapters, currentChapter }: BookMobileNavProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const currentIndex = chapters.findIndex(ch => ch.id === currentChapter);
@@ -35,7 +35,7 @@ export default function BookMobileNav({ bookSlug, bookTitle, toc, chapters, curr
     ) : (
       <Link
         key={key}
-        href={getBookChapterUrl(bookSlug, ch.id)}
+        href={localizeUrl(getBookChapterUrl(bookSlug, ch.id), language)}
         className={`block py-1.5 px-2 rounded-lg text-sm no-underline hover:bg-surface-soft transition-colors ${
           isPast ? 'text-foreground/70 hover:text-foreground' : 'text-muted hover:text-foreground'
         }`}
@@ -64,7 +64,7 @@ export default function BookMobileNav({ bookSlug, bookTitle, toc, chapters, curr
     <div className="ink-card lg:hidden p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <Link href={`/books/${bookSlug}`} className="group flex items-center gap-2 no-underline">
+        <Link href={localizeUrl(`/books/${bookSlug}`, language)} className="group flex items-center gap-2 no-underline">
           <MetaLabel tone="accent">
             {t('book')}
           </MetaLabel>
@@ -89,8 +89,8 @@ export default function BookMobileNav({ bookSlug, bookTitle, toc, chapters, curr
       {/* Prev / Next */}
       <div className="mb-3">
         <PrevNextNav
-          prev={prevChapter ? { href: getBookChapterUrl(bookSlug, prevChapter.id), title: prevChapter.title } : null}
-          next={nextChapter ? { href: getBookChapterUrl(bookSlug, nextChapter.id), title: nextChapter.title } : null}
+          prev={prevChapter ? { href: localizeUrl(getBookChapterUrl(bookSlug, prevChapter.id), language), title: prevChapter.title } : null}
+          next={nextChapter ? { href: localizeUrl(getBookChapterUrl(bookSlug, nextChapter.id), language), title: nextChapter.title } : null}
         />
       </div>
 

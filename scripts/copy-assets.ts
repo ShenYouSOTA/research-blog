@@ -292,32 +292,32 @@ function syncReferencedAssets(sourceFile: string, rootDir: string, destPostDir: 
   pruneDestDir(destPostDir);
 }
 
-function processPosts() {
-  if (fs.existsSync(srcDir)) {
-    const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+function processPosts(postsSrcDir = srcDir, postsDestDir = destDir, sourceLabelRoot = 'content/posts') {
+  if (fs.existsSync(postsSrcDir)) {
+    const entries = fs.readdirSync(postsSrcDir, { withFileTypes: true });
 
     entries.forEach((entry) => {
       if (entry.isDirectory()) {
         const targetName = getSlugFromFilename(entry.name);
-        const srcPostDir = path.join(srcDir, entry.name);
-        const destPostDir = path.join(destDir, targetName);
+        const srcPostDir = path.join(postsSrcDir, entry.name);
+        const destPostDir = path.join(postsDestDir, targetName);
 
         console.log(`Processing Post: ${entry.name} -> ${targetName}`);
-        claimAssetDir(destPostDir, `content/posts/${entry.name}`, folderHasAssets(srcPostDir));
+        claimAssetDir(destPostDir, `${sourceLabelRoot}/${entry.name}`, folderHasAssets(srcPostDir));
         markGeneratedDestination(destPostDir);
         syncRecursive(srcPostDir, destPostDir);
       } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.mdx') || entry.name.endsWith('.rst'))) {
         const targetName = getSlugFromFilename(entry.name);
-        const sourceFile = path.join(srcDir, entry.name);
-        const destPostDir = path.join(destDir, targetName);
+        const sourceFile = path.join(postsSrcDir, entry.name);
+        const destPostDir = path.join(postsDestDir, targetName);
 
         console.log(`Processing Flat Post: ${entry.name} -> ${targetName}`);
-        claimAssetDir(destPostDir, `content/posts/${entry.name}`, fileReferencesRealAsset(sourceFile, srcDir));
+        claimAssetDir(destPostDir, `${sourceLabelRoot}/${entry.name}`, fileReferencesRealAsset(sourceFile, postsSrcDir));
         markGeneratedDestination(destPostDir);
         if (!fs.existsSync(destPostDir)) {
           fs.mkdirSync(destPostDir, { recursive: true });
         }
-        syncReferencedAssets(sourceFile, srcDir, destPostDir);
+        syncReferencedAssets(sourceFile, postsSrcDir, destPostDir);
       }
     });
   }
@@ -330,14 +330,14 @@ function isPostFolder(dirPath: string): boolean {
          fs.existsSync(path.join(dirPath, 'index.rst'));
 }
 
-function processSeries() {
-  if (!fs.existsSync(seriesSrcDir)) return;
+function processSeries(seriesRootDir = seriesSrcDir, postsDestDir = destDir, sourceLabelRoot = 'content/series') {
+  if (!fs.existsSync(seriesRootDir)) return;
 
-  const seriesEntries = fs.readdirSync(seriesSrcDir, { withFileTypes: true });
+  const seriesEntries = fs.readdirSync(seriesRootDir, { withFileTypes: true });
 
   seriesEntries.forEach((seriesEntry) => {
     if (seriesEntry.isDirectory()) {
-      const seriesPath = path.join(seriesSrcDir, seriesEntry.name);
+      const seriesPath = path.join(seriesRootDir, seriesEntry.name);
       const items = fs.readdirSync(seriesPath, { withFileTypes: true });
 
       // Process items in series folder
@@ -347,11 +347,11 @@ function processSeries() {
           const isSeriesIndex = item.name.startsWith('index.') || item.name.startsWith('README.');
           const targetSlug = isSeriesIndex ? seriesEntry.name : getSlugFromFilename(item.name);
           const sourceFile = path.join(seriesPath, item.name);
-          const destPostDir = path.join(destDir, targetSlug);
+          const destPostDir = path.join(postsDestDir, targetSlug);
 
           console.log(`Processing Series File: ${item.name} -> ${targetSlug}`);
           if (!isSeriesIndex) {
-            claimAssetDir(destPostDir, `content/series/${seriesEntry.name}/${item.name}`, fileReferencesRealAsset(sourceFile, seriesPath));
+            claimAssetDir(destPostDir, `${sourceLabelRoot}/${seriesEntry.name}/${item.name}`, fileReferencesRealAsset(sourceFile, seriesPath));
           }
           markGeneratedDestination(destPostDir);
 
@@ -365,10 +365,10 @@ function processSeries() {
           // Folder-based post: copy only its own assets
           const targetSlug = getSlugFromFilename(item.name);
           const itemSrcPath = path.join(seriesPath, item.name);
-          const destPostDir = path.join(destDir, targetSlug);
+          const destPostDir = path.join(postsDestDir, targetSlug);
 
           console.log(`Processing Series Post Folder: ${item.name} -> ${targetSlug}`);
-          claimAssetDir(destPostDir, `content/series/${seriesEntry.name}/${item.name}`, folderHasAssets(itemSrcPath));
+          claimAssetDir(destPostDir, `${sourceLabelRoot}/${seriesEntry.name}/${item.name}`, folderHasAssets(itemSrcPath));
           markGeneratedDestination(destPostDir);
 
           // Copy everything from the post folder EXCEPT markdown files
@@ -394,15 +394,15 @@ function processSeries() {
   });
 }
 
-function processBooks() {
-  if (!fs.existsSync(booksSrcDir)) return;
+function processBooks(booksRootDir = booksSrcDir, booksDestRootDir = booksDestDir) {
+  if (!fs.existsSync(booksRootDir)) return;
 
-  const entries = fs.readdirSync(booksSrcDir, { withFileTypes: true });
+  const entries = fs.readdirSync(booksRootDir, { withFileTypes: true });
 
   entries.forEach((entry) => {
     if (entry.isDirectory()) {
-      const srcBookDir = path.join(booksSrcDir, entry.name);
-      const destBookDir = path.join(booksDestDir, entry.name);
+      const srcBookDir = path.join(booksRootDir, entry.name);
+      const destBookDir = path.join(booksDestRootDir, entry.name);
 
       console.log(`Processing Book: ${entry.name}`);
       markGeneratedDestination(destBookDir);
@@ -462,5 +462,22 @@ if (import.meta.main) {
   pruneOrphanedOptimizerDirs(destDir);
   pruneOrphanedOptimizerDirs(booksDestDir);
   pruneOrphanedOptimizerDirs(flowsDestDir);
+
+  // Locale content trees mirror into public/<locale>/… so co-located assets
+  // resolve under the locale-prefixed image base slugs (zh/posts/<slug>).
+  const { enabled, defaultLocale, locales } = siteConfig.i18n;
+  const localeTrees = enabled ? locales.filter((l) => l !== defaultLocale) : [];
+  for (const locale of localeTrees) {
+    const contentRoot = path.join(process.cwd(), 'content', locale);
+    if (!fs.existsSync(contentRoot)) continue;
+    const publicRoot = path.join(process.cwd(), 'public', locale);
+    const localePostsDest = path.join(publicRoot, 'posts');
+    const localeBooksDest = path.join(publicRoot, 'books');
+    fs.mkdirSync(localePostsDest, { recursive: true });
+    processPosts(path.join(contentRoot, 'posts'), localePostsDest, `content/${locale}/posts`);
+    processSeries(path.join(contentRoot, 'series'), localePostsDest, `content/${locale}/series`);
+    processBooks(path.join(contentRoot, 'books'), localeBooksDest);
+    pruneOrphanedOptimizerDirs(publicRoot);
+  }
   console.log('Assets copied successfully.');
 }

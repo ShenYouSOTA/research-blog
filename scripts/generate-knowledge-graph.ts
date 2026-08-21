@@ -10,10 +10,13 @@
 import fs from 'fs';
 import path from 'path';
 import { getSeriesData } from '../src/lib/content/series';
-import { getAllPosts } from '../src/lib/content/posts';
-import { getAllNotes } from '../src/lib/content/notes';
+import { getAllPosts, getPostsWithLocaleOriginals } from '../src/lib/content/posts';
+import { getAllNotes, getNotesWithLocaleOriginals } from '../src/lib/content/notes';
 import { getAllFlows } from '../src/lib/content/flows';
-import { getPostUrl } from '../src/lib/urls';
+import { getNoteUrl, getPostUrl, localizeUrl } from '../src/lib/urls';
+import { siteConfig } from '../site.config';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
 
 interface GraphNode {
   id: string;
@@ -58,6 +61,18 @@ async function main() {
   const noteDocs = notes.map(n => ({ slug: n.slug, aliases: n.aliases ?? [], title: n.title, type: 'note' as const, content: n.content, url: `/notes/${n.slug}` }));
   const flowDocs = flows.map(f => ({ slug: f.slug, title: f.title, type: 'flow' as const, content: f.content, url: `/flows/${f.slug}` }));
 
+  // Locale-tree ORIGINALS (no default twin) become nodes of their own, keyed
+  // by their /<locale>/… URL; twins are skipped — a twin is the same work as
+  // its canonical node. These docs join the outgoing-wikilink scan but are
+  // deliberately NOT registered in slugToId, so default-tree node ids and
+  // edge targets stay byte-identical.
+  const localePostDocs = getPostsWithLocaleOriginals()
+    .filter(p => p.locale !== DEFAULT_LOCALE)
+    .map(p => ({ slug: p.slug, title: p.title, type: 'post' as const, content: p.content, url: getPostUrl(p) }));
+  const localeNoteDocs = getNotesWithLocaleOriginals()
+    .filter(n => n.locale !== DEFAULT_LOCALE)
+    .map(n => ({ slug: n.slug, title: n.title, type: 'note' as const, content: n.content, url: localizeUrl(getNoteUrl(n.slug), n.locale) }));
+
   // Wikilink targets are bare slugs; map each to a node id. Duplicate post slugs
   // are legal, so last-wins here matches the app's wikilink registry.
   const slugToId = new Map<string, string>();
@@ -75,8 +90,11 @@ async function main() {
   for (const doc of flowDocs) {
     slugToId.set(doc.slug, doc.url); // flow nodes are added only when linked (below)
   }
+  for (const doc of [...localePostDocs, ...localeNoteDocs]) {
+    nodeMap.set(doc.url, { id: doc.url, title: doc.title, type: doc.type, url: doc.url, connections: 0 });
+  }
 
-  const allContent = [...postDocs, ...noteDocs, ...flowDocs];
+  const allContent = [...postDocs, ...noteDocs, ...flowDocs, ...localePostDocs, ...localeNoteDocs];
 
   // Build wikilink edges (deduplicate per source document by resolved id, so a
   // slug and an alias pointing at the same note don't create duplicate edges,

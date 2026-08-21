@@ -5,7 +5,7 @@ import type { PostData, PostNavItem } from '@/lib/content/types';
 import PostLayout from '@/layouts/PostLayout';
 import SimpleLayout from '@/layouts/SimpleLayout';
 import { siteConfig } from '../../site.config';
-import { resolveLocale } from '@/lib/i18n';
+import { resolveLocaleValue } from '@/lib/i18n';
 import { getPostUrl, withTrailingSlash } from '@/lib/urls';
 import { buildPostJsonLd, serializeJsonLd } from '@/lib/json-ld';
 
@@ -16,16 +16,17 @@ import { buildPostJsonLd, serializeJsonLd } from '@/lib/json-ld';
  * this component owns JSON-LD, the simple-layout branch, and the
  * related/adjacent/backlinks/series assembly.
  */
-export default function RenderPostPage({ post }: { post: PostData }) {
+export default function RenderPostPage({ post, locale }: { post: PostData; locale: string }) {
   const layout = post.layout || 'post';
 
   const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
   const jsonLd = buildPostJsonLd({
     post,
     postUrl: withTrailingSlash(`${siteUrl}${getPostUrl(post)}`),
-    siteTitle: resolveLocale(siteConfig.title),
+    siteTitle: resolveLocaleValue(siteConfig.title, locale),
     siteUrl,
     defaultOgImage: siteConfig.ogImage,
+    inLanguage: post.locale,
   });
   const jsonLdScript = (
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
@@ -37,16 +38,16 @@ export default function RenderPostPage({ post }: { post: PostData }) {
 
   const relatedPosts = getRelatedPosts(post);
   const { prev, next } = getAdjacentPosts(post);
-  const slugRegistry = buildSlugRegistry();
-  const backlinks = getBacklinks(post.slug);
+  const slugRegistry = buildSlugRegistry(post.locale);
+  const backlinks = getBacklinks(post.slug, post.locale);
   const collectionContexts = getCollectionsForPost(post);
   let seriesPosts: PostNavItem[] = [];
   let seriesTitle: string | undefined;
 
   if (post.series) {
     // Project to nav items so sibling article bodies stay out of the client payload.
-    seriesPosts = toPostNavItems(getSeriesPosts(post.series));
-    const seriesData = getSeriesData(post.series);
+    seriesPosts = toPostNavItems(getSeriesPosts(post.series, post.locale));
+    const seriesData = getSeriesData(post.series, post.locale);
     seriesTitle = seriesData?.title;
   }
 
@@ -55,6 +56,7 @@ export default function RenderPostPage({ post }: { post: PostData }) {
       {jsonLdScript}
       <PostLayout
         post={post}
+        locale={locale}
         relatedPosts={relatedPosts}
         seriesPosts={seriesPosts}
         seriesTitle={seriesTitle}
