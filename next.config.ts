@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  // GitHub Pages project sites are served below /<repository-name>.
+  basePath: basePath || undefined,
+  assetPrefix: basePath ? `${basePath}/` : undefined,
   // Next.js default is false (slug.html), but we use true (slug/index.html)
   // for two reasons:
   //   1. Co-located assets: posts can have a slug/images/ directory alongside

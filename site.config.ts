@@ -33,7 +33,7 @@ export const siteConfig = {
     favicon: "/icon.svg",
   },
   description: { en: "research blog", zh: "research blog" },
-  baseUrl: "https://amytis.vercel.app", // Replace with your actual domain
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://shenyouSOTA.github.io/research-blog",
   ogImage: "/og-image.png", // Default OG/social preview image — place a 1200×630 PNG at public/og-image.png
   footerText: { en: `© ${new Date().getFullYear()} blog. All rights reserved.`, zh: `© ${new Date().getFullYear()} blog. 保留所有权利。` },
 
