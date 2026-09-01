@@ -6,6 +6,8 @@
 
 [**Live Demo**](https://amytis.vercel.app/)
 
+[**ShenYou Research Blog**](https://shenyousota.github.io/research-blog/)
+
 ![Amytis Screenshot](public/images/amytis-screenshot.jpg)
 
 ## Why Amytis?

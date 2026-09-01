@@ -6,6 +6,8 @@
 
 [**在线演示**](https://amytis.vercel.app/)
 
+[**神游研究博客**](https://shenyousota.github.io/research-blog/)
+
 ![Amytis 截图](public/images/amytis-screenshot.jpg)
 
 ## 为什么要做 Amytis ?
