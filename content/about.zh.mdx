@@ -1,0 +1,78 @@
+---
+title: "关于 Amytis"
+date: "2026-01-07"
+excerpt: "Amytis 是一个优雅的开源数字花园框架——从每日随笔到精炼文章，从系列合集到结构化书籍，层层深化。"
+layout: "simple"
+toc: true
+---
+
+# Amytis 是什么？
+
+**Amytis** 是一个优雅的开源数字花园框架，用于构建个人知识空间。数字花园不同于传统博客——它是一个随时间生长与关联的写作网络，涵盖各个成熟阶段：粗糙的笔记、精炼的文章，以及两者之间的一切。
+
+本站是 Amytis 的在线演示。你所看到的一切——文章、系列、书籍、随笔、知识图谱和全文搜索——均由该框架驱动。
+
+**[在 GitHub 上查看源码 →](https://github.com/hutusi/amytis)**
+
+## 知识的阶梯
+
+Amytis 的核心是一个简单的观察：知识不会凭空成型，而是沿着一条从粗糙到精炼的自然路径演化：
+
+**随笔（Flow）** — 随时记录涌现的想法。每日笔记、碎片、一闪而过的观察。这是一切的种子。
+
+**文章（Articles）** — 将单一想法提炼为清晰、可分享的文章。一个思考，完整呈现。
+
+**系列（Series）** — 将相关文章整理为有共同主线的精选合集。一个更宏观的论题，通过多篇文章共同探索。
+
+**书籍（Books）** — 将成熟的知识组织为结构化的卷册，设有章节与部分。是想法最终蒸馏后的形态。
+
+每一阶段都在上一阶段的基础上生长。花园，就这样繁茂起来。
+
+## 功能特性
+
+- **文章与系列** — 长篇写作，整理为有序的精选合集
+- **书籍** — 多章节内容，支持章节分组与导航
+- **随笔** — 日常笔记，含日历侧边栏、年月浏览和标签筛选
+- **知识库** — 原子笔记，支持 `[[双向链接]]` 和反向链接面板
+- **知识图谱** — 基于 D3 的力导向图，可视化所有内容的连接关系
+- **全文搜索** — 由 Pagefind 驱动，支持类型过滤、最近搜索和键盘导航
+- **目录导航** — 滚动感知的阅读进度指示器
+- **多语言（i18n）** — 内置中英文支持，易于扩展
+- **主题色** — 四种配色方案：默认、蓝色、玫瑰、琥珀
+- **评论系统** — 支持 Giscus 或 Disqus
+- **数据统计** — 支持 Umami、Plausible 或 Google Analytics
+- **RSS 订阅** — 根据内容自动生成
+
+## 技术栈
+
+- **[Next.js 15+](https://nextjs.org)** — App Router、静态导出、`generateStaticParams`
+- **[React 19](https://react.dev)** — Server Components，兼容 React Compiler
+- **[Tailwind CSS v4](https://tailwindcss.com)** — CSS 变量，主题设计令牌
+- **[MDX](https://mdxjs.com)** — 支持 React 组件的 Markdown，remark/rehype 插件链路
+- **[Bun](https://bun.sh)** — 高速包管理器与运行时
+- **[Pagefind](https://pagefind.app)** — 静态全文搜索，无需服务端
+- **[D3.js](https://d3js.org)** — 知识图谱可视化
+- **[KaTeX](https://katex.org)** — LaTeX 数学公式渲染
+
+## 设计理念
+
+**优雅，开箱即用。** 字体排版、间距和色彩系统经过精心打磨。一个全新的 Amytis 站点天然美观——因为花园本应是令人愉悦的地方。
+
+**内容优先，配置从简。** 将 MDX 文件放入 `content/posts/` 即成为文章。系列、书籍、笔记和随笔遵循同样的模式——无需数据库、无需 CMS、无需超出 Next.js 原生能力的构建魔法。
+
+**Markdown 优先，但不止于 Markdown。** 所有内容以 Markdown 或 MDX 编写——熟悉、可迁移、随处可写。Amytis 在此基础上扩展了语法高亮、LaTeX 数学公式、Mermaid 图表、`[[双向链接]]`，以及自动生成的目录和摘要。写作界面保持简洁，渲染结果却丰富而强大。
+
+**按需取用，不多不少。** 所有功能均可在 `site.config.ts` 中关闭。不需要书籍？不需要知识图谱？它们将不会渲染，也不会生成路由。
+
+**纯文本，永久可用。** 所有内容以 Markdown 或 MDX 文件存储——可版本控制、可迁移、编辑器无关。你的写作属于你。
+
+## 快速开始
+
+```bash
+git clone https://github.com/hutusi/amytis my-garden
+cd my-garden
+bun install
+bun dev
+```
+
+编辑 `site.config.ts` 设置标题、导航和功能开关，将内容添加到 `content/posts/`。访问 [GitHub 仓库](https://github.com/hutusi/amytis) 获取完整文档和配置说明。

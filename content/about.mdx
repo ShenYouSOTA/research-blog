@@ -1,0 +1,78 @@
+---
+title: "About Amytis"
+date: "2026-01-07"
+excerpt: "Amytis is an elegant open-source framework for building your personal digital garden — from raw daily flows to refined articles, curated series, and structured books."
+layout: "simple"
+toc: true
+---
+
+# What is Amytis?
+
+**Amytis** is an elegant, open-source framework for building a personal digital garden — a knowledge space where ideas grow and connect over time. Unlike a traditional blog, a digital garden is a living network of writing at various stages of development: rough notes, refined essays, and everything in between.
+
+This site is a live demo. Everything you see — posts, series, books, flow notes, the knowledge graph, and full-text search — is powered by the framework.
+
+**[View the source on GitHub →](https://github.com/hutusi/amytis)**
+
+## The Knowledge Ladder
+
+Amytis is built around a simple observation: knowledge doesn't arrive fully formed. Ideas follow a natural path from rough to refined:
+
+**Flow** — Capture raw thoughts as they happen. Daily notes, fragments, and fleeting observations. The seeds of everything.
+
+**Articles** — Refine a single idea into a clear, shareable essay. One thought, fully articulated.
+
+**Series** — Gather related articles into a curated collection with a shared thread. A broader argument, explored across multiple pieces.
+
+**Books** — Organize mature knowledge into a structured volume with chapters and parts. The most distilled form of an idea.
+
+Each stage builds on the last. The garden grows.
+
+## Features
+
+- **Articles & Series** — Long-form writing organized into curated, numbered collections
+- **Books** — Multi-chapter content with part grouping and chapter navigation
+- **Flow Notes** — Daily notes with calendar sidebar, year/month browsing, and tag filtering
+- **Knowledge Base** — Atomic notes with `[[wikilink]]` support and a backlinks panel
+- **Knowledge Graph** — D3 force graph visualizing connections across all content
+- **Full-text Search** — Powered by Pagefind, with type filters, recent searches, and keyboard navigation
+- **Table of Contents** — Sticky TOC with scroll-aware reading progress
+- **Multi-language (i18n)** — Built-in English and Chinese, easily extendable
+- **Themes** — Four color palettes: Default, Blue, Rose, and Amber
+- **Comments** — Giscus or Disqus integration
+- **Analytics** — Umami, Plausible, or Google Analytics
+- **RSS Feed** — Automatically generated from your content
+
+## Technology Stack
+
+- **[Next.js 15+](https://nextjs.org)** — App Router, static export, `generateStaticParams`
+- **[React 19](https://react.dev)** — Server Components, React Compiler-compatible
+- **[Tailwind CSS v4](https://tailwindcss.com)** — CSS variables, theme design tokens
+- **[MDX](https://mdxjs.com)** — Markdown with React components, remark/rehype plugin pipeline
+- **[Bun](https://bun.sh)** — Fast package manager and runtime
+- **[Pagefind](https://pagefind.app)** — Static full-text search, no server required
+- **[D3.js](https://d3js.org)** — Knowledge graph visualization
+- **[KaTeX](https://katex.org)** — LaTeX math rendering
+
+## Design Philosophy
+
+**Elegance by default.** The typography, spacing, and color system are carefully considered. A fresh Amytis install already looks beautiful — because a garden should be a pleasure to walk through.
+
+**Content over configuration.** Drop an MDX file into `content/posts/` and it becomes a post. Series, books, notes, and flows follow the same pattern — no database, no CMS, no build-time magic beyond what Next.js provides natively.
+
+**Markdown-first, but not Markdown-limited.** All content is authored in Markdown or MDX — familiar, portable, writable in any editor. Amytis extends the format with syntax highlighting, LaTeX math, Mermaid diagrams, `[[wikilinks]]`, auto-generated tables of contents, and smart excerpts. The writing surface stays simple; the rendered output becomes rich.
+
+**Ship what you need, nothing more.** Every feature can be disabled in `site.config.ts`. No books section? No knowledge graph? They simply don't render or generate routes.
+
+**Plain text, forever.** All content lives as Markdown or MDX files — version-controlled, portable, and editor-agnostic. Your writing belongs to you.
+
+## Get Started
+
+```bash
+git clone https://github.com/hutusi/amytis my-garden
+cd my-garden
+bun install
+bun dev
+```
+
+Edit `site.config.ts` to set your title, navigation, and features. Add content to `content/posts/`. Visit the [GitHub repository](https://github.com/hutusi/amytis) for full documentation and configuration reference.

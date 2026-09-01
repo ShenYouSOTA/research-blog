@@ -1,0 +1,53 @@
+name: Publish to npm and GitHub Packages
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.11
+      
+      - run: bun install --frozen-lockfile
+      
+      - name: Publish to npm
+        # No NODE_AUTH_TOKEN needed for Trusted Publishing!
+        # --provenance proves that the package was built in this GitHub Action
+        run: npm publish --provenance --access public
+
+  publish-github:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@hutusi'
+      
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.11
+      
+      - run: bun install --frozen-lockfile
+      
+      - name: Publish to GitHub
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
